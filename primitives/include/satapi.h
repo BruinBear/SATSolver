@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define TRUE 1
+#define FALSE 0
 /******************************************************************************
  * typedefs 
  ******************************************************************************/
@@ -24,7 +26,8 @@ typedef char BOOLEAN;
  ******************************************************************************/
 
 typedef struct {
-
+	unsigned long index;
+	char var_name;
   // ... TO DO ..
 
 } Var;
@@ -39,9 +42,8 @@ typedef struct {
  ******************************************************************************/
 
 typedef struct {
-
   // ... TO DO ..
-
+	signed long index;
 } Lit;
 
 
@@ -54,9 +56,11 @@ typedef struct {
  ******************************************************************************/
 
 typedef struct {
-
   // ... TO DO ..
-
+	unsigned long index;
+	Lit* Content;
+	unsigned long size;
+	int subsumed = FALSE;
 } Clause;
 
 
@@ -67,9 +71,15 @@ typedef struct {
  ******************************************************************************/
 
 typedef struct {
-
   // ... TO DO ..
-
+	Clauses* original_cnf;
+	unsigned long original_size;
+	Clauses* learned_clauses;
+	unsigned long learned_size;
+	Lit* decisions;
+	unsigned long decisions_size;
+	Lit* implied_literals;
+	unsigned long implied_size;
 } SatState;
 
 
