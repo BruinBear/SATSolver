@@ -27,7 +27,7 @@ typedef char BOOLEAN;
 
 typedef struct {
 	unsigned long index;
-	char var_name;
+	char* var_name;
   // ... TO DO ..
 
 } Var;
@@ -44,6 +44,7 @@ typedef struct {
 typedef struct {
   // ... TO DO ..
 	signed long index;
+	BOOLEAN isSet = FALSE;
 } Lit;
 
 
@@ -60,7 +61,7 @@ typedef struct {
 	unsigned long index;
 	Lit* Content;
 	unsigned long size;
-	int subsumed = FALSE;
+	BOOLEAN subsumed = FALSE;
 } Clause;
 
 
@@ -72,9 +73,9 @@ typedef struct {
 
 typedef struct {
   // ... TO DO ..
-	Clauses* original_cnf;
+	Clause* original_cnf;
 	unsigned long original_size;
-	Clauses* learned_clauses;
+	Clause* learned_clauses;
 	unsigned long learned_size;
 	Lit* decisions;
 	unsigned long decisions_size;

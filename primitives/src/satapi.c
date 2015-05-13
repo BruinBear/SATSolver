@@ -43,8 +43,12 @@ Var* index2varp(unsigned long i, SatState* sat_state) {
 Lit* pos_literal(Var* var) {
 
   // ... TO DO ..
+  Lit* ret = (Lit *) malloc(sizeof(Lit));
+  // Check Var's index is within correct range? 1~n
+  ret->index = Var->index;
   
-  return NULL; // dummy value
+  
+  return ret; // dummy value
 }
 
 Lit* neg_literal(Var* var) {
@@ -57,8 +61,9 @@ Lit* neg_literal(Var* var) {
 BOOLEAN set_literal(Lit* lit) {
 
   // ... TO DO ..
-  
-  return 0; // dummy value
+  if (lit == 0)
+	return 0; // dummy value
+  return lit->isSet;
 }
 
 /******************************************************************************
