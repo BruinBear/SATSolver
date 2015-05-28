@@ -44,9 +44,11 @@ typedef double c2dWmc;          //for (weighted) model count
 
 #define true 1
 #define false 0
+
 #define free 0
-#define implied 1
-#define resolved 2
+#define implied_pos 1 // the positive literal of the variable is implied
+		      // by decision or unit res
+#define implied_neg 2
 typedef char litstat;
 
 
@@ -81,8 +83,12 @@ struct var {
   Lit neg_lit;
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
   
+  litstat status = free; // free, implied_pos or implied_neg (by decision/unit resolution), 
+                
+  
+  
   // Maybe we need this?
-  SatState* sstate = NULL;
+  SatState* state = NULL;
 
 } ;
 
@@ -96,13 +102,11 @@ struct var {
 
 struct literal {
   c2dLiteral index;
-  litstat status = free; // free, implied (by decision/unit resolution), 
-                         // or resolved
   unsigned long level;
   ClauseNode* clauses = NULL;
   Var* var = NULL;
   Clause* reason = NULL; // the reason why literal was implied
-						 // NULL if literal is free or decided
+			 // NULL if literal is free or decided
 } ;
 
 struct LitNode {
