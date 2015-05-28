@@ -317,7 +317,7 @@ void sat_unmark_clause(Clause* clause);
 
 // Add toBeAdded in front of head
 void add_lit_h(LitNode** head, Lit* toBeAdded);
-
+void get_asserting(Sat_State* sat_state);
 
 
 
