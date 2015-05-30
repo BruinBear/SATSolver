@@ -59,13 +59,7 @@ typedef char litstat;
  * Basic structures
  ******************************************************************************/
 
-/******************************************************************************
- * Variables:
- * --You must represent variables using the following struct 
- * --Variable index must start at 1, and is no greater than the number of cnf variables
- * --Index of a variable must be of type "c2dSize"
- * --The field "mark" below and its related functions should not be changed
- ******************************************************************************/
+
 
 typedef struct literal Lit;
 typedef struct var Var;
@@ -75,23 +69,6 @@ typedef struct ClauseNode ClauseNode;
 typedef struct LitNode LitNode;
 typedef struct LitNodeR LitNodeR; // LitNode with reason why lit was asserted
 
-
-struct var {
-
-  c2dSize index;
-  
-  Lit pos_lit;
-  Lit neg_lit;
-  BOOLEAN mark; //THIS FIELD MUST STAY AS IS
-  
-  litstat status = free; // free, implied_pos or implied_neg (by decision/unit resolution), 
-                
-  
-  
-  // Maybe we need this?
-  SatState* state = NULL;
-
-} ;
 
 /******************************************************************************
  * Literals:
@@ -114,6 +91,32 @@ struct LitNode {
 	LitNode* next = NULL;
 	Lit* lit;
 };
+
+/******************************************************************************
+ * Variables:
+ * --You must represent variables using the following struct 
+ * --Variable index must start at 1, and is no greater than the number of cnf variables
+ * --Index of a variable must be of type "c2dSize"
+ * --The field "mark" below and its related functions should not be changed
+ ******************************************************************************/
+struct var {
+
+  c2dSize index;
+  
+  Lit pos_lit;
+  Lit neg_lit;
+  BOOLEAN mark; //THIS FIELD MUST STAY AS IS
+  
+  litstat status = free; // free, implied_pos or implied_neg (by decision/unit resolution), 
+                
+  
+  
+  // Maybe we need this?
+  SatState* state = NULL;
+
+} ;
+
+
 
 /******************************************************************************
  * Clauses: 
