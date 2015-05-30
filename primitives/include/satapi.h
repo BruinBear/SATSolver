@@ -110,6 +110,7 @@ struct LitNode {
 	Lit* lit;
 };
 
+
 /******************************************************************************
  * Clauses: 
  * --You must represent clauses using the following struct 
@@ -123,6 +124,7 @@ struct LitNode {
 struct clause {
   c2dSize index;
   Lit** literals;
+  unsigned long lit_size;
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
   Lit* watch1;
@@ -152,7 +154,7 @@ struct sat_state_t {
 	LitNode* decided_literals; // stack. The head literal is at
 							   // the highest decision level
 	LitNode* implied_literals; // stack.
-	
+	Clause* conflict_reason;
 };
 
 /******************************************************************************
@@ -317,7 +319,7 @@ void sat_unmark_clause(Clause* clause);
 
 // Add toBeAdded in front of head
 void add_lit_h(LitNode** head, Lit* toBeAdded);
-void get_asserting(Sat_State* sat_state);
+Clause* get_asserting_clause(Sat_State* sat_state);
 
 
 

@@ -184,6 +184,9 @@ c2dSize sat_learned_clause_count(const SatState* sat_state) {
   return 0; //dummy valued
 }
 
+
+
+
 //adds clause to the set of learned clauses, and runs unit resolution
 //returns a learned clause if unit resolution finds a contradiction, NULL otherwise
 //
@@ -328,6 +331,116 @@ void sat_mark_clause(Clause* clause) {
 void sat_unmark_clause(Clause* clause) {
   clause->mark = 0;
 }
+
+/******************************************************************************
+ * Added function
+ ******************************************************************************/
+Lit* flip_lit(Lit* lit) {
+  if(lit->index > 0) {
+    return sat_neg_literal(lit->var);
+  } else {
+    return sat_pos_literal(lit->var);
+  }
+}
+
+BOOLEAN is_lit_duplicate(LitNode* head, Lit* lit) {
+  while(head!=NULL) {
+    if(head->lit == lit) {
+      return true;
+    } 
+  }
+  return false;
+}
+
+LitNode* append_node(LitNode* node, LitNode* tail) {
+  if(tail != NULL) {
+    tail->next = node;
+  }
+  return node;
+}
+
+unsigned long get_last_level(Clause* reason) {
+  unsigned long last_level = 0;
+  for(unsigned long i = 0; i < reason->lit_size; i++) {
+    if(reason->literals[i]->level > last_level) {
+      last_level = reason->literals[i]->level;
+    }
+  }
+  return last_level;
+}
+
+Clause* get_asserting_clause(Sat_State* sat_state) {
+                                
+  LitNode* q_head;
+  LitNode* q_tail;
+  LitNode* l_head;
+  LitNode* l_tail;
+  Clause* conflict_reason = sat_state->conflict_reason;
+  unsigned long last_level = get_last_level(conflict_reason);
+  // initialize from conflict
+  for(unsigned long i = 0; i < conflict_reason->lit_size; i++) {
+    LitNode* node = &((LitNode) {NULL, flip_lit(conflict_reason->literals[i])});
+    if(conflict_reason->literals[i]->level == last_level) { // last level node added to queue
+      if(!is_lit_duplicate(q_head, node)) {
+        q_tail = append_node(q_tail, node);
+        if(q_head == NULL) {
+          q_head = q_tail;
+        }
+      }
+    } else {
+      if(!is_lit_duplicate(l_head, node)) { // not last level node added to list
+        l_tail = append_node(l_tail, node);
+        if(l_head == NULL) {
+          l_head = l_tail;
+        }
+      }
+    }
+  }
+
+  // Constructing queue and list
+  // If more than one literal at last level
+  while(q_head->next != NULL) {
+    Lit* head_lit = q_head->lit;
+
+    if(head_lit->reason == NULL && head_lit->status == implied) {
+      // if duplicate just truncate head
+      if(is_lit_duplicate(q_head->next, q_head->lit)) {
+        q_head = q_head->next;
+      }
+      // move the head to tail
+      LitNode* tmp_node = q_head;
+      q_head = q_head->next;
+      tmp_node->next = NULL;
+      q_tail = append_node(tmp_node, q_tail);
+    } else { // implied
+      // advance head
+      q_head = q_head->next;
+      // add literals in the reason to last_level queue and literal list
+      Clause* reason = head_lit->reason;
+      for(unsigned long i = 0; i < reason->lit_size; i++) {
+        LitNode* node = &((LitNode) {NULL, flip_lit(reason->literals[i])});
+        if(reason->literals[i]->level == last_level) { // last level node added to queue
+          if(!is_lit_duplicate(q_head, node)) {
+            q_tail = append_node(q_tail, node);
+            if(q_head == NULL) {
+              q_head = q_tail;
+            }
+          }
+        } else {
+          if(!is_lit_duplicate(l_head, node)) { // not last level node added to list
+            l_tail = append_node(l_tail, node);
+            if(l_head == NULL) {
+              l_head = l_tail;
+            }
+          }
+        }
+      }
+    }
+  }
+  return make_clause_from_lit(q_head, l_head);
+}
+
+
 
 /******************************************************************************
  * end
