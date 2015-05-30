@@ -63,11 +63,10 @@ typedef char litstat;
 
 typedef struct literal Lit;
 typedef struct var Var;
-typedef struct claue Clause;
+typedef struct clause Clause;
 typedef struct sat_state_t SatState;
 typedef struct ClauseNode ClauseNode;
 typedef struct LitNode LitNode;
-typedef struct LitNodeR LitNodeR; // LitNode with reason why lit was asserted
 
 
 /******************************************************************************
