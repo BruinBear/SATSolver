@@ -79,7 +79,7 @@ typedef struct LitNode LitNode;
 
 struct literal {
   c2dLiteral index;
-  unsigned long level;
+  unsigned long level = 1;
   ClauseNode* clauses = NULL;
   Var* var = NULL;
   Clause* reason = NULL; // the reason why literal was implied
@@ -88,7 +88,7 @@ struct literal {
 
 struct LitNode {
 	LitNode* next = NULL;
-	Lit* lit;
+	Lit* lit = NULL;
 };
 
 /******************************************************************************
@@ -129,16 +129,16 @@ struct var {
 
 struct clause {
   c2dSize index;
-  Lit** literals;
+  Lit** literals = NULL;
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
-  Lit* watch1;
-  Lit* watch2;  
+  Lit* watch1 = NULL;
+  Lit* watch2 = NULL;  
 };
 
 struct ClauseNode {
-	ClauseNode* next;
-	Clause* clause;
+	ClauseNode* next = NULL;
+	Clause* clause = NULL;
 };
 
 /******************************************************************************
@@ -158,9 +158,9 @@ struct sat_state_t {
 	
 	c2dSize assertion_level = 0;
 	
-	LitNode* decided_literals; // stack. The head literal is at
+	LitNode* decided_literals = NULL; // stack. The head literal is at
 							   // the highest decision level
-	LitNode* implied_literals; // stack.
+	LitNode* implied_literals = NULL; // stack.
 	
 };
 
