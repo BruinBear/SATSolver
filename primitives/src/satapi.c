@@ -368,6 +368,13 @@ LitNode* append_node(LitNode* node, LitNode* tail) {
   return node;
 }
 
+ClauseNode* append_node(ClauseNode* node, ClauseNode* tail) {
+  if(tail != NULL) {
+    tail->next = node;
+  }
+  return node;
+}
+
 unsigned long get_last_level(Clause* reason) {
   unsigned long last_level = 0;
   for(unsigned long i = 0; i < reason->lit_size; i++) {
