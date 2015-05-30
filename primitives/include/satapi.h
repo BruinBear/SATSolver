@@ -156,6 +156,8 @@ struct sat_state_t {
 	c2dSize num_orig_clauses = 0;
 	c2dSize num_asserted_clauses = 0;
 	
+	c2dSize assertion_level = 0;
+	
 	LitNode* decided_literals; // stack. The head literal is at
 							   // the highest decision level
 	LitNode* implied_literals; // stack.
