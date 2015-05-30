@@ -112,8 +112,8 @@ struct var {
   // TODO:
   // number of clauses which contains this var in original CNF
   // either literal of var counts, so take absolute value
-  unsigned long num_clause_has;
-
+  c2dSize num_clause_has;
+  Clause** original_cnf_array;
   
   // Maybe we need this?
   SatState* state = NULL;
