@@ -352,6 +352,7 @@ BOOLEAN is_lit_duplicate(LitNode* head, Lit* lit) {
     if(head->lit == lit) {
       return true;
     } 
+    head = head->next;
   }
   return false;
 }
@@ -372,6 +373,12 @@ unsigned long get_last_level(Clause* reason) {
   }
   return last_level;
 }
+
+
+Clause* make_clause_from_lit(LitNode* a, LitNode* b) {
+  
+}
+
 
 Clause* get_asserting_clause(Sat_State* sat_state) {
                                 
