@@ -134,8 +134,6 @@ struct var {
 
 struct clause {
   c2dSize index;
-  Lit** literals;
-  unsigned long lit_size;
   Lit** literals = NULL;
   c2dSize num_lits = 0;
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
