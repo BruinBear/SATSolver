@@ -49,6 +49,7 @@ typedef double c2dWmc;          //for (weighted) model count
 #define implied_pos 1 // the positive literal of the variable is implied
 		      // by decision or unit res
 #define implied_neg 2
+#define conflicting 3 // Both implied_pos and implied_neg
 typedef char litstat;
 
 
