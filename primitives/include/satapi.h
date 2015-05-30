@@ -44,9 +44,12 @@ typedef double c2dWmc;          //for (weighted) model count
 
 #define true 1
 #define false 0
+
 #define free 0
-#define implied 1
-#define resolved 2
+#define implied_pos 1 // the positive literal of the variable is implied
+		      // by decision or unit res
+#define implied_neg 2
+#define conflicting 3 // Both implied_pos and implied_neg
 typedef char litstat;
 
 
@@ -56,35 +59,15 @@ typedef char litstat;
  * Basic structures
  ******************************************************************************/
 
-/******************************************************************************
- * Variables:
- * --You must represent variables using the following struct 
- * --Variable index must start at 1, and is no greater than the number of cnf variables
- * --Index of a variable must be of type "c2dSize"
- * --The field "mark" below and its related functions should not be changed
- ******************************************************************************/
+
 
 typedef struct literal Lit;
 typedef struct var Var;
-typedef struct claue Clause;
+typedef struct clause Clause;
 typedef struct sat_state_t SatState;
 typedef struct ClauseNode ClauseNode;
 typedef struct LitNode LitNode;
-typedef struct LitNodeR LitNodeR; // LitNode with reason why lit was asserted
 
-
-struct var {
-
-  c2dSize index;
-  
-  Lit pos_lit;
-  Lit neg_lit;
-  BOOLEAN mark; //THIS FIELD MUST STAY AS IS
-  
-  // Maybe we need this?
-  SatState* sstate = NULL;
-
-} ;
 
 /******************************************************************************
  * Literals:
@@ -96,19 +79,43 @@ struct var {
 
 struct literal {
   c2dLiteral index;
-  litstat status = free; // free, implied (by decision/unit resolution), 
-                         // or resolved
-  unsigned long level;
+  unsigned long level = 1;
   ClauseNode* clauses = NULL;
   Var* var = NULL;
   Clause* reason = NULL; // the reason why literal was implied
-						 // NULL if literal is free or decided
+			 // NULL if literal is free or decided
 } ;
 
 struct LitNode {
 	LitNode* next = NULL;
-	Lit* lit;
+	Lit* lit = NULL;
 };
+
+
+/******************************************************************************
+ * Variables:
+ * --You must represent variables using the following struct 
+ * --Variable index must start at 1, and is no greater than the number of cnf variables
+ * --Index of a variable must be of type "c2dSize"
+ * --The field "mark" below and its related functions should not be changed
+ ******************************************************************************/
+struct var {
+
+  c2dSize index;
+  
+  Lit pos_lit;
+  Lit neg_lit;
+  BOOLEAN mark; //THIS FIELD MUST STAY AS IS
+  
+  litstat status = free; // free, implied_pos or implied_neg (by decision/unit resolution), 
+                
+  
+  
+  // Maybe we need this?
+  SatState* state = NULL;
+
+} ;
+
 
 
 /******************************************************************************
@@ -125,15 +132,17 @@ struct clause {
   c2dSize index;
   Lit** literals;
   unsigned long lit_size;
+  Lit** literals = NULL;
+  c2dSize num_lits = 0;
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
-  Lit* watch1;
-  Lit* watch2;  
+  Lit* watch1 = NULL;
+  Lit* watch2 = NULL;  
 };
 
 struct ClauseNode {
-	ClauseNode* next;
-	Clause* clause;
+	ClauseNode* next = NULL;
+	Clause* clause = NULL;
 };
 
 /******************************************************************************
@@ -151,10 +160,13 @@ struct sat_state_t {
 	c2dSize num_orig_clauses = 0;
 	c2dSize num_asserted_clauses = 0;
 	
-	LitNode* decided_literals; // stack. The head literal is at
+	c2dSize assertion_level = 0;
+	
+	LitNode* decided_literals = NULL; // stack. The head literal is at
 							   // the highest decision level
-	LitNode* implied_literals; // stack.
 	Clause* conflict_reason;
+	LitNode* implied_literals = NULL; // stack.
+	
 };
 
 /******************************************************************************
