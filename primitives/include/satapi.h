@@ -109,7 +109,11 @@ struct var {
   
   litstat status = free; // free, implied_pos or implied_neg (by decision/unit resolution), 
                 
-  
+  // TODO:
+  // number of clauses which contains this var in original CNF
+  // either literal of var counts, so take absolute value
+  unsigned long num_clause_has;
+
   
   // Maybe we need this?
   SatState* state = NULL;
@@ -130,10 +134,15 @@ struct var {
 
 struct clause {
   c2dSize index;
+  Lit** literals;
   unsigned long lit_size;
   Lit** literals = NULL;
   c2dSize num_lits = 0;
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
+
+  // the number of fixed literals that make this clause subsumed
+  // 0 when not subsumed.
+  unsigned long subsuming_literal_count = 0; 
 
   Lit* watch1 = NULL;
   Lit* watch2 = NULL;  

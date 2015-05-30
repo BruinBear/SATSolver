@@ -39,10 +39,19 @@ BOOLEAN sat_instantiated_var(const Var* var) {
 
 //returns 1 if all the clauses mentioning the variable are subsumed, 0 otherwise
 BOOLEAN sat_irrelevant_var(const Var* var) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  ClauseNode* pos_head = var->pos_lit.clauses;
+  ClauseNode* neg_head = var->neg_lit.clauses;
+  while(pos_head != NULL) {
+    if(pos_head->clause->subsuming_literal_count != 0)
+      return 0;
+    pos_head = pos_head->next;
+  }
+    while(neg_head != NULL) {
+    if(neg_head->clause->subsuming_literal_count != 0)
+      return 0;
+    neg_head = neg_head->next;
+  }
+  return 1;
 }
 
 //returns the number of variables in the cnf of sat state
@@ -376,7 +385,7 @@ unsigned long get_last_level(Clause* reason) {
 
 
 Clause* make_clause_from_lit(LitNode* a, LitNode* b) {
-  
+
 }
 
 
