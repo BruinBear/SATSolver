@@ -130,6 +130,7 @@ struct var {
 struct clause {
   c2dSize index;
   Lit** literals = NULL;
+  c2dSize num_lits = 0;
   BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
   Lit* watch1 = NULL;
