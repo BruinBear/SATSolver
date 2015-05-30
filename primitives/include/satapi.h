@@ -143,6 +143,7 @@ struct clause {
   // the number of fixed literals that make this clause subsumed
   // 0 when not subsumed.
   unsigned long subsuming_literal_count = 0; 
+  unsigned long free_literal_count = 0; 
 
   Lit* watch1 = NULL;
   Lit* watch2 = NULL;  
