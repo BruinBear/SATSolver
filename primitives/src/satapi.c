@@ -69,7 +69,6 @@ c2dSize sat_var_occurences(const Var* var) {
 //index starts from 0, and is less than the number of clauses mentioning the variable
 //this cannot be called on a variable that is not mentioned by any clause
 Clause* sat_clause_of_var(c2dSize index, const Var* var) {
-  // ... TO DO ..
   return var->original_cnf_array[index];
 }
 
@@ -118,7 +117,7 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
    add_lit_h(&(sat_state->decided_literals), lit);
    if (sat_unit_resolution(sat_state))
      return NULL; // Unit resol succeeded
-   return get_asserting(sat_state);
+   return get_asserting_clause(sat_state);
 }
 
 //undoes the last literal decision and the corresponding implications obtained by unit resolution
@@ -126,9 +125,7 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
 //if the current decision level is L in the beginning of the call, it should be updated 
 //to L-1 before the call ends
 void sat_undo_decide_literal(SatState* sat_state) {
-
-  // ... TO DO ...
-  
+  unmark_a_literal(sat_state, get_last_literal(sat_state));
   return; //dummy valued
 }
 
@@ -146,39 +143,26 @@ Clause* sat_index2clause(c2dSize index, const SatState* sat_state) {
 
 //returns the index of a clause
 c2dSize sat_clause_index(const Clause* clause) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return clause->index;
 }
 
 //returns the literals of a clause
 Lit** sat_clause_literals(const Clause* clause) {
-
-  // ... TO DO ...
-  
-  return NULL; //dummy valued
+  return clause->literals;
 }
 
 //returns the number of literals in a clause
 c2dSize sat_clause_size(const Clause* clause) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return clause->lit_size;
 }
 
 //returns 1 if the clause is subsumed, 0 otherwise
 BOOLEAN sat_subsumed_clause(const Clause* clause) {
-
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+  return clause->num_clause_has != 0;
 }
 
 //returns the number of clauses in the cnf of sat state
 c2dSize sat_clause_count(const SatState* sat_state) {
-
   // ... TO DO ...
   
   return 0; //dummy valued
@@ -229,7 +213,6 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
 
 //constructs a SatState from an input cnf file
 SatState* sat_state_new(const char* file_name) {
-
   // ... TO DO ...
   
   return NULL; //dummy valued
@@ -272,19 +255,116 @@ void sat_state_free(SatState* sat_state) {
  * Yet, the first decided literal must have 2 as its decision level
  ******************************************************************************/
 
+Lit* get_free_literal_from_clause(Clause* c) {
+  for(unsigned int i = 0; i < c->lit_size; i++) {
+    if(c->literals[i]->var.status == free) {
+      return c->literals[i];
+    }
+  }
+  return NULL;
+}
+
+void append(LitNode* head, LitNode* new) {
+  if(head!= NULL) {
+    while(head->next!=NULL)
+      head = head->next;
+    head->next = new;
+  }
+}
+
+
+BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
+  ClauseNode* subsumed_head = lit->clauses;
+  ClauseNode* resolved_head = flip_lit(lit)->clauses;
+  // increament subsumed clauses
+  while(subsumed_head!=NULL) {
+    subsumed_head->clause->subsuming_literal_count++;
+    subsumed_head = head->next;
+  }
+  // resolve
+  while(resolved_head!=NULL) {
+    resolved_head->clause->free_literal_count--;
+    if(resolved_head->clause->subsuming_literal_count == 0 &&
+          resolved_head->clause->free_literal_count == 0) {
+      conflict = true;
+      sat_state->conflict_reason = resolved_head->clause;
+      return false;
+    } else if(resolved_head->clause->subsuming_literal_count == 0 &&
+                  resolved_head->clause->free_literal_count == 1){
+      Lit* new_implied = get_free_literal_from_clause(resolved_head->clause);
+      new_implied->level = lit->level;
+      // set level
+      // add the newly implied literal
+      append(sat_state->implied, &(LitNode){sat_state->implied, new_implied});
+    }
+    resolved_head = resolved_head->next;
+  }
+  return true;
+}
+
+BOOLEAN unmark_a_literal(SatState* sat_state, Lit* lit) {
+  ClauseNode* subsumed_head = lit->clauses;
+  ClauseNode* resolved_head = flip_lit(lit)->clauses;
+  // increament subsumed clauses
+  while(subsumed_head!=NULL) {
+    subsumed_head->clause->subsuming_literal_count--
+    subsumed_head = head->next;
+  }
+  // resolve
+  while(resolved_head!=NULL) {
+    if(resolved_head->clause->subsuming_literal_count == 0 &&
+          resolved_head->clause->free_literal_count == 0) {
+      conflict = false;
+      sat_state->conflict_reason = NULL;
+    }
+    resolved_head->clause->free_literal_count++;
+    resolved_head = resolved_head->next;
+  }
+  return true;
+}
+
 //applies unit resolution to the cnf of sat state
 //returns 1 if unit resolution succeeds, 0 if it finds a contradiction
 BOOLEAN sat_unit_resolution(SatState* sat_state) {
-
   // ... TO DO ...
-  
-  return 0; //dummy valued
+  LitNode* decided = sat_state->decided_literals;
+  LitNode* implied = sat_state->implied_literals;
+
+  while(implied != NULL) {
+    Lit* l = implied->lit;
+    // if contradiction return 0
+    if(!mark_a_literal(sat_state, l))
+      return 0;
+    implied = implied->next;
+  }
+  while(decided!= NULL) {
+    Lit * l = decided->lit;
+    // if contradiction return 0
+    if(!mark_a_literal(sat_state, l))
+      return 0;
+    decided = decided->next;
+  }
+  return 1;
 }
 
 //undoes sat_unit_resolution(), leading to un-instantiating variables that have been instantiated
 //after sat_unit_resolution()
 void sat_undo_unit_resolution(SatState* sat_state) {
+  unsigned long level = sat_state->assertion_level;
+  LitNode* decided = sat_state->decided_literals;
+  LitNode* implied = sat_state->implied_literals;
+  while(decided!=NULL && decided->lit->level <= level) {
+    decided=decided->next;
+  }
+  while(implied!=NULL && implied->lit->level <= level) {
+    implied=implied->next;
+  }
+  while(decided!=NULL) {
 
+  }
+  while(implied!=NULL) {
+    
+  }
   // ... TO DO ...
   
   return; //dummy valued
