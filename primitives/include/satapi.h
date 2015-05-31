@@ -29,8 +29,8 @@
  ******************************************************************************/
 
 /******************************************************************************
- * typedefs
- ******************************************************************************/
+* typedefs
+******************************************************************************/
 
 typedef char BOOLEAN; //signed
 
@@ -47,7 +47,7 @@ typedef double c2dWmc;          //for (weighted) model count
 
 #define free 0
 #define implied_pos 1 // the positive literal of the variable is implied
-		      // by decision or unit res
+// by decision or unit res
 #define implied_neg 2
 #define conflicting 3 // Both implied_pos and implied_neg
 typedef char litstat;
@@ -56,8 +56,8 @@ typedef char litstat;
 /****************************************/
 
 /******************************************************************************
- * Basic structures
- ******************************************************************************/
+* Basic structures
+******************************************************************************/
 
 
 
@@ -70,110 +70,194 @@ typedef struct LitNode LitNode;
 
 
 /******************************************************************************
- * Literals:
- * --You must represent literals using the following struct 
- * --Positive literals' indices range from 1 to n (n is the number of cnf variables)
- * --Negative literals' indices range from -n to -1 (n is the number of cnf variables)
- * --Index of a literal must be of type "c2dLiteral"
- ******************************************************************************/
+* Literals:
+* --You must represent literals using the following struct
+* --Positive literals' indices range from 1 to n (n is the number of cnf variables)
+* --Negative literals' indices range from -n to -1 (n is the number of cnf variables)
+* --Index of a literal must be of type "c2dLiteral"
+******************************************************************************/
 
 struct literal {
-  c2dLiteral index;
-  unsigned long level = 1;
-  ClauseNode* clauses = NULL;
-  Var* var = NULL;
-  Clause* reason = NULL; // the reason why literal was implied
-			 // NULL if literal is free or decided
-} ;
+	c2dLiteral index;
+	unsigned long level = 1;
+	ClauseNode* clauses = NULL;
+	Var* var = NULL;
+	Clause* reason = NULL; // the reason why literal was implied
+	// NULL if literal is free or decided
+
+};
+
+void initialize(Lit* l) { l->level = 1; l->clauses = NULL; l->var = NULL; l->reason = NULL; }
 
 struct LitNode {
 	LitNode* next = NULL;
 	Lit* lit = NULL;
 };
-
+void initialize(LitNode* l) { l->lit = NULL; l->next = NULL; }
 
 /******************************************************************************
- * Variables:
- * --You must represent variables using the following struct 
- * --Variable index must start at 1, and is no greater than the number of cnf variables
- * --Index of a variable must be of type "c2dSize"
- * --The field "mark" below and its related functions should not be changed
- ******************************************************************************/
+* Variables:
+* --You must represent variables using the following struct
+* --Variable index must start at 1, and is no greater than the number of cnf variables
+* --Index of a variable must be of type "c2dSize"
+* --The field "mark" below and its related functions should not be changed
+******************************************************************************/
 struct var {
 
-  c2dSize index;
-  
-  Lit pos_lit;
-  Lit neg_lit;
-  BOOLEAN mark; //THIS FIELD MUST STAY AS IS
-  
-  litstat status = free; // free, implied_pos or implied_neg (by decision/unit resolution), 
-                
-  // TODO:
-  // number of clauses which contains this var in original CNF
-  // either literal of var counts, so take absolute value
-  c2dSize num_clause_has;
-  Clause** original_cnf_array;
-  
-  // Maybe we need this?
-  SatState* state = NULL;
+	c2dSize index;
 
-} ;
+	Lit pos_lit;
+	Lit neg_lit;
+	BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
+	litstat status = free; // free, implied_pos or implied_neg (by decision/unit resolution), 
 
+	// TODO:
+	// number of clauses which contains this var in original CNF
+	// either literal of var counts, so take absolute value
+	c2dSize num_clause_has  = 0;
+	Clause** original_cnf_array = NULL;
 
-/******************************************************************************
- * Clauses: 
- * --You must represent clauses using the following struct 
- * --Clause index must start at 1, and is no greater than the number of cnf clauses
- * --Index of a clause must be of type "c2dSize"
- * --A clause must have an array consisting of its literals
- * --The index of literal array must start at 0, and is less than the clause size
- * --The field "mark" below and its related functions should not be changed
- ******************************************************************************/
+	// Maybe we need this?
+	SatState* state = NULL;
 
-struct clause {
-  c2dSize index;
-  Lit** literals = NULL;
-  c2dSize num_lits = 0;
-  BOOLEAN mark; //THIS FIELD MUST STAY AS IS
-
-  // the number of fixed literals that make this clause subsumed
-  // 0 when not subsumed.
-  unsigned long subsuming_literal_count = 0; 
-
-  Lit* watch1 = NULL;
-  Lit* watch2 = NULL;  
+	
 };
 
+void initialize(Var* v) {
+		initialize(&(v->pos_lit));
+		initialize(&(v->neg_lit));
+		v->status = free;
+		v->num_clause_has = 0;
+		v->original_cnf_array = NULL;
+		v->state = NULL;
+	}
+
+/******************************************************************************
+* Clauses:
+* --You must represent clauses using the following struct
+* --Clause index must start at 1, and is no greater than the number of cnf clauses
+* --Index of a clause must be of type "c2dSize"
+* --A clause must have an array consisting of its literals
+* --The index of literal array must start at 0, and is less than the clause size
+* --The field "mark" below and its related functions should not be changed
+******************************************************************************/
+
+struct clause {
+	c2dSize index;
+	Lit** literals = NULL;
+	c2dSize num_lits = 0;
+	BOOLEAN mark; //THIS FIELD MUST STAY AS IS
+
+	// the number of fixed literals that make this clause subsumed
+	// 0 when not subsumed.
+	unsigned long subsuming_literal_count = 0;
+
+	Lit* watch1 = NULL;
+	Lit* watch2 = NULL;
+
+
+};
+	void initialize(Clause * c) {
+		c->literals = NULL;
+		c->num_lits = 0;
+		c->subsuming_literal_count = 0;
+		c->watch1 = NULL;
+		c->watch2 = NULL;
+	}
 struct ClauseNode {
 	ClauseNode* next = NULL;
 	Clause* clause = NULL;
 };
 
+void initialize(ClauseNode* c) {
+	c->next = NULL;
+	c->clause = NULL;
+}
+
+typedef struct ClausePtrVector
+{
+	Clause** clause = NULL;
+	size_t limit = 5; // Total size of the vector
+	size_t current = 0; //Number of vectors in it at present
+	void add(Clause* c)
+	{
+		if (clause == NULL)
+		{
+			clause = (Clause**)malloc(limit*sizeof(Clause*));
+		}
+		else if (current == limit)
+		{
+			limit *= 2;
+			clause = (Clause**) realloc(clause, limit*sizeof(Clause*));
+			if (clause == NULL)
+			{
+				printf("Was not able to add a new element in vector!!\n");
+				exit(1);
+			}
+				
+		}
+		clause[current] = c;
+		current++;
+	}
+} ClausePtrVector;
+
+void initialize(ClausePtrVector* c) {
+	c->clause = NULL;
+	c->limit = 5;
+	c->current = 0;
+}
+
 /******************************************************************************
- * SatState: 
- * --The following structure will keep track of the data needed to
- * condition/uncondition variables, perform unit resolution, and so on ...
- ******************************************************************************/
+* SatState:
+* --The following structure will keep track of the data needed to
+* condition/uncondition variables, perform unit resolution, and so on ...
+******************************************************************************/
 
 struct sat_state_t {
 	Var* vars = NULL;
 	c2dSize num_vars = 0;
-	
+
 	ClauseNode* cnf_head = NULL;
 	ClauseNode* cnf_tail = NULL;
 	c2dSize num_orig_clauses = 0;
 	c2dSize num_asserted_clauses = 0;
-	
-	c2dSize assertion_level = 0;
-	
+
+	c2dSize assertion_level = 1;
+
 	LitNode* decided_literals = NULL; // stack. The head literal is at
-							   // the highest decision level
-	Clause* conflict_reason;
+	// the highest decision level
+	Clause* conflict_reason = NULL;
 	LitNode* implied_literals = NULL; // stack.
-	
+
 };
+
+void initialize(SatState* s) {
+	s->vars = NULL;
+	s->num_vars = 0;
+	s->cnf_head = NULL;
+	s->cnf_tail = NULL;
+	s->num_orig_clauses = 0;
+	s->num_asserted_clauses = 0;
+	s->assertion_level = 1;
+	s->decided_literals = NULL;
+	s->conflict_reason = NULL;
+	s->implied_literals = NULL;
+}
+
+LitNode* append_node(LitNode* node, LitNode* tail) {
+			 if (tail != NULL) {
+				 tail->next = node;
+			 }
+			 return node;
+}
+
+ClauseNode* append_node(ClauseNode* node, ClauseNode* tail) {
+	if (tail != NULL) {
+		tail->next = node;
+	}
+	return node;
+}
 
 /******************************************************************************
  * API: 
