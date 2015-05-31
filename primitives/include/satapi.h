@@ -166,6 +166,7 @@ void initialize(Var* v) {
 		v->status = free;
 		v->num_clause_has = 0;
 		v->state = NULL;
+		initialize(&v->original_cnf_array);
 }
 
 /******************************************************************************
@@ -187,7 +188,7 @@ struct clause {
 	// the number of fixed literals that make this clause subsumed
 	// 0 when not subsumed.
 	unsigned long subsuming_literal_count = 0;
-  unsigned long free_literal_count = 0; 
+	 unsigned long free_literal_count = 0; 
 
 	Lit* watch1 = NULL;
 	Lit* watch2 = NULL;
@@ -197,7 +198,7 @@ void initialize(Clause * c) {
 		c->literals = NULL;
 		c->num_lits = 0;
 		c->subsuming_literal_count = 0;
-    c->free_literal_count = 0;
+    		c->free_literal_count = 0;
 		c->watch1 = NULL;
 		c->watch2 = NULL;
 }
