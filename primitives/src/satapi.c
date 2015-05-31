@@ -417,7 +417,7 @@ SatState* sat_state_new(char* cnf_fname)
 		printf(" %d ", lnode->lit->index);
 		lnode = lnode->next;
 	}
-	return NULL;
+	return state;
 }
 
 //frees the SatState
