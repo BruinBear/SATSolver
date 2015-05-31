@@ -82,13 +82,20 @@ struct literal {
 	c2dLiteral index;
 	unsigned long level = 1;
 	ClauseNode* clauses = NULL;
+	ClauseNode* clauses_tail = NULL;
 	Var* var = NULL;
 	Clause* reason = NULL; // the reason why literal was implied
 	// NULL if literal is free or decided
 
 };
 
-void initialize(Lit* l) { l->level = 1; l->clauses = NULL; l->var = NULL; l->reason = NULL; }
+void initialize(Lit* l) { 
+	l->level = 1; 
+	l->clauses = NULL; 
+	l->clauses_tail = NULL;
+	l->var = NULL; 
+	l->reason = NULL; 
+}
 
 struct LitNode {
 	LitNode* next = NULL;
