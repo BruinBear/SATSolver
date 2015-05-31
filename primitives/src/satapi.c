@@ -422,10 +422,82 @@ SatState* sat_state_new(char* cnf_fname)
 
 //frees the SatState
 void sat_state_free(SatState* sat_state) {
+	
+	
+	for (int i = 0; i < sat_state->num_vars; i++)
+	{
+		// For each literal, delete the list clauses (whole list, just the nodes), if not NULL
+		ClauseNode* pos_lit_c = sat_state->vars[i].pos_lit.clauses;
+		ClauseNode* neg_lit_c = sat_state->vars[i].neg_lit.clauses;
+		ClauseNode* ptr = pos_lit_c;
+		while (ptr != NULL)
+		{
+			ptr = ptr->next;
+			free(pos_lit_c);
+			pos_lit_c = ptr;
+		} 
+		ptr = neg_lit_c;
+		while (ptr != NULL)
+		{
+			ptr = ptr->next;
+			free(neg_lit_c);
+			neg_lit_c = ptr;
+		}
+		
+		// For each var, delete original_cnf_array (delete the array in this vector)
+		free(sat_state->vars->original_cnf_array.clause);
+	}
 
-  // ... TO DO ...
-  
-  return; //dummy valued
+	// Delete vars array
+	free(sat_state->vars);
+
+
+	// For each clause node in cnf_head list (if not NULL)
+	ClauseNode* cnf_c = sat_state->cnf_head;
+	ClauseNode* cnf_next = cnf_c;
+	while (cnf_next != NULL)
+	{
+		cnf_next = cnf_next->next;
+
+		// free the Lit** literals in the clause
+		free(cnf_c->clause->literals);
+
+		// free the clause
+		free(cnf_c);
+
+		cnf_c = cnf_next;
+	}
+
+
+	// Delete decided_literals (whole list, just the nodes), if not NULL
+	LitNode* lnode = sat_state->decided_literals;
+	LitNode* lnode_next = lnode;
+	while (lnode_next != NULL)
+	{
+		lnode_next = lnode_next->next;
+		free(lnode);
+		lnode = lnode_next;
+	}
+
+	// Delete implied_literals (whole list, just the nodes), if not NULL
+	lnode = sat_state->implied_literals;
+	lnode_next = lnode;
+	while (lnode_next != NULL)
+	{
+		lnode_next = lnode_next->next;
+		free(lnode);
+		lnode = lnode_next;
+	}
+
+	// Delete conflict_reason (a clause) and is literal list, if not NULL
+	free(sat_state->conflict_reason->literals);
+	free(sat_state->conflict_reason);
+
+
+	// Delete sat_state
+	free(sat_state);
+
+	return; //dummy valued
 }
 
 /******************************************************************************
