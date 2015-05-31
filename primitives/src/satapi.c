@@ -34,22 +34,23 @@ Var* sat_literal_var(const Lit* lit) {
 //returns 1 if the variable is instantiated, 0 otherwise
 //a variable is instantiated either by decision or implication (by unit resolution)
 BOOLEAN sat_instantiated_var(const Var* var) {
-  return (((var->pos_lit)->status) != free);
+  return (((var->status) != free);
 }
 
 //returns 1 if all the clauses mentioning the variable are subsumed, 0 otherwise
 BOOLEAN sat_irrelevant_var(const Var* var) {
   ClauseNode* pos_head = var->pos_lit.clauses;
   ClauseNode* neg_head = var->neg_lit.clauses;
+  // if one clause is not subsumed then return 0
   while(pos_head != NULL) {
     if(pos_head->clause->subsuming_literal_count != 0)
       return 0;
     pos_head = pos_head->next;
   }
-    while(neg_head != NULL) {
-    if(neg_head->clause->subsuming_literal_count != 0)
-      return 0;
-    neg_head = neg_head->next;
+  while(neg_head != NULL) {
+  if(neg_head->clause->subsuming_literal_count != 0)
+    return 0;
+  neg_head = neg_head->next;
   }
   return 1;
 }
@@ -135,7 +136,6 @@ void sat_undo_decide_literal(SatState* sat_state) {
 
 //returns a clause structure for the corresponding index
 Clause* sat_index2clause(c2dSize index, const SatState* sat_state) {
-
   // ... TO DO ...
   
   return NULL; //dummy valued
@@ -576,25 +576,24 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
   return true;
 }
 
-BOOLEAN unmark_a_literal(SatState* sat_state, Lit* lit) {
+void unmark_a_literal(SatState* sat_state, Lit* lit) {
   ClauseNode* subsumed_head = lit->clauses;
   ClauseNode* resolved_head = flip_lit(lit)->clauses;
   // increament subsumed clauses
   while(subsumed_head!=NULL) {
-    subsumed_head->clause->subsuming_literal_count--
-    subsumed_head = head->next;
+    subsumed_head->clause->subsuming_literal_count--;
+    subsumed_head->clause->free_literal_count++;
+    subsumed_head = subsumed_head->next;
   }
   // resolve
   while(resolved_head!=NULL) {
     if(resolved_head->clause->subsuming_literal_count == 0 &&
           resolved_head->clause->free_literal_count == 0) {
-      conflict = false;
       sat_state->conflict_reason = NULL;
     }
     resolved_head->clause->free_literal_count++;
     resolved_head = resolved_head->next;
   }
-  return true;
 }
 
 //applies unit resolution to the cnf of sat state
