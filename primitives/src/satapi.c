@@ -69,7 +69,7 @@ c2dSize sat_var_occurences(const Var* var) {
 //index starts from 0, and is less than the number of clauses mentioning the variable
 //this cannot be called on a variable that is not mentioned by any clause
 Clause* sat_clause_of_var(c2dSize index, const Var* var) {
-  return var->original_cnf_array[index];
+  return var->original_cnf_array.clause[index];
 }
 
 /******************************************************************************
@@ -274,13 +274,13 @@ SatState* sat_state_new(char* cnf_fname)
 		// By counting the number of spaces in the line
 
 		int num_lits = 0;
-		//printf(line);
 		for (int i = 0; line[i] != '\0'; i++)
 		{
 			if (line[i] == ' ')
 				num_lits++;
 		}
-
+		// This is the same as the number of free literals
+		clause->free_literal_count = num_lits;
 
 		printf("\nThe number of literals in clause is %d \n", num_lits);
 
@@ -297,11 +297,28 @@ SatState* sat_state_new(char* cnf_fname)
 				break;
 			int lit_index = atoi(token);
 			Lit* lit;
+
+			// Get the literal
 			if (lit_index > 0) // pos lit
 				lit = &(state->vars[lit_index - 1].pos_lit);
 			else
 				lit = &(state->vars[(-1 * lit_index) - 1].neg_lit);
+			
+			// Put into clause
 			clause->literals[i] = lit;
+			
+			// Put this clause to the vector of the variable
+			lit->var->original_cnf_array.add(clause);
+			lit->var->num_clause_has += 1;
+
+			// Put this clause to the list of the literal
+			ClauseNode* cnode = (ClauseNode*)malloc(sizeof(ClauseNode));
+			initialize(cnode);
+			cnode->clause = clause;
+			if (lit->clauses == NULL)
+				lit->clauses = cnode;
+			lit->clauses_tail = append_node(cnode, lit->clauses_tail);
+			
 			token = strtok(NULL, " ");
 			i++;
 		} 
@@ -310,12 +327,36 @@ SatState* sat_state_new(char* cnf_fname)
 			printf(" %d ", clause->literals[i]->index);
 		}
 
-		// put the clause into the list of cnfs
+		// Special case: if num_lits = 1, then unit clause. 
+		// Add this to the implied literal list
+		if (num_lits == 1)
+		{
+			Lit * unit_lit = clause->literals[0];
+			// Set the variable to be implied as pos/neg
+			if (unit_lit->index > 0)
+				unit_lit->var->status = implied_pos;
+			else
+				unit_lit->var->status = implied_neg;
+			
+			// Set the reason as this clause 
+			// (note since level is initialized as 1, no change needs to be made)
+			unit_lit->reason = clause;
+
+			//Put into a LitNode and put into list of implied literals
+			LitNode* imp_lit_node = (LitNode*)malloc(sizeof(LitNode));
+			initialize(imp_lit_node);
+			imp_lit_node->lit = unit_lit;
+			imp_lit_node->next = state->implied_literals;
+			state->implied_literals = imp_lit_node;
+
+		}
+
+		// put the clause into the cnf list
 		
 		ClauseNode* clause_node = (ClauseNode *)malloc(sizeof(ClauseNode));
+		initialize(clause_node);
 		clause_node->clause = clause;
-		clause->index = state->num_orig_clauses + 1;
-		state->num_orig_clauses = clause->index;
+		clause->index = (state->cnf_tail == NULL) ? 1 : (state->cnf_tail->clause->index) + 1;
 		if (state->cnf_head == NULL)
 			state->cnf_head = clause_node;
 		//state->cnf_tail = append_node(clause_node, state->cnf_tail); 
@@ -327,6 +368,55 @@ SatState* sat_state_new(char* cnf_fname)
 		printf("Added clause to cnf\n");
 	}
 
+	printf("\n\nPrinting all clauses...\n");
+	ClauseNode* cnf_ptr = state->cnf_head;
+	while (cnf_ptr != NULL)
+	{
+		for (int i = 0; i < cnf_ptr->clause->num_lits; i++)
+			printf(" %d ", cnf_ptr->clause->literals[i]->index);
+		printf("\n");
+		cnf_ptr = cnf_ptr->next;
+	}
+
+	printf("\nPrinting, for every variable, the clauses that mention it\n");
+	for (int i = 0; i < state->num_vars; i++)
+	{
+		printf("Variable %d: ", i + 1);
+		for (int j = 0; j < (state->vars[i].original_cnf_array).current; j++)
+		{
+			printf(" Clause %d, ", (state->vars[i].original_cnf_array).clause[j]->index);
+		}
+		printf("\n");
+	}
+
+	printf("\nPrinting, for every literal, the clauses that mention it\n");
+	for (int i = 0; i < state->num_vars; i++)
+	{
+		printf("Variable %d: ", i + 1);
+		printf("\n  Positive:\n");
+		ClauseNode* cnode_ptr = state->vars[i].pos_lit.clauses;
+		while (cnode_ptr != NULL) 
+		{
+			printf("   Clause %d,", cnode_ptr->clause->index);
+			cnode_ptr = cnode_ptr->next;
+		}
+		printf("\n  Negative:\n");
+		cnode_ptr = state->vars[i].neg_lit.clauses;
+		while (cnode_ptr != NULL)
+		{
+			printf("   Clause %d,", cnode_ptr->clause->index);
+			cnode_ptr = cnode_ptr->next;
+		}
+		printf("\n");
+	}
+
+	printf("\nPrinting literals that are implied already...\n");
+	LitNode* lnode = state->implied_literals;
+	while (lnode != NULL)
+	{
+		printf(" %d ", lnode->lit->index);
+		lnode = lnode->next;
+	}
 	return NULL;
 }
 
