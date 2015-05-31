@@ -211,7 +211,6 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
  * SatState (sat_state_free)
  ******************************************************************************/
 
-//constructs a SatState from an input cnf file
 SatState* sat_state_new(char* cnf_fname)
 {
 	FILE* file = fopen(cnf_fname, "r");
@@ -264,8 +263,7 @@ SatState* sat_state_new(char* cnf_fname)
 
 			continue;
 		}
-		
-			
+
 		// Otherwise, create a clause
 		Clause* clause = (Clause *)malloc(sizeof(Clause));
 		initialize(clause);
@@ -333,10 +331,25 @@ SatState* sat_state_new(char* cnf_fname)
 		{
 			Lit * unit_lit = clause->literals[0];
 			// Set the variable to be implied as pos/neg
-			if (unit_lit->index > 0)
-				unit_lit->var->status = implied_pos;
-			else
-				unit_lit->var->status = implied_neg;
+			// But check first that there is no crazy contradiction already.
+			if (unit_lit->var->status != free)
+			{
+				if ((unit_lit->var->status == implied_pos && unit_lit->index < 0)
+					|| (unit_lit->var->status == implied_neg && unit_lit->index > 0))
+				{
+					unit_lit->var->status = conflicting;
+					state->conflict_reason = clause;
+				}
+					
+			}
+			else 
+			{
+				if (unit_lit->index > 0)
+					unit_lit->var->status = implied_pos;
+				else
+					unit_lit->var->status = implied_neg;
+			
+			}
 			
 			// Set the reason as this clause 
 			// (note since level is initialized as 1, no change needs to be made)
@@ -419,6 +432,7 @@ SatState* sat_state_new(char* cnf_fname)
 	}
 	return state;
 }
+
 
 //frees the SatState
 void sat_state_free(SatState* sat_state) {
