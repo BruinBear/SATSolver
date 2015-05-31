@@ -489,11 +489,6 @@ void sat_state_free(SatState* sat_state) {
 		lnode = lnode_next;
 	}
 
-	// Delete conflict_reason (a clause) and is literal list, if not NULL
-	free(sat_state->conflict_reason->literals);
-	free(sat_state->conflict_reason);
-
-
 	// Delete sat_state
 	free(sat_state);
 
