@@ -67,6 +67,7 @@ typedef struct clause Clause;
 typedef struct sat_state_t SatState;
 typedef struct ClauseNode ClauseNode;
 typedef struct LitNode LitNode;
+typedef struct ClausePtrVector ClausePtrVector;
 
 
 /******************************************************************************
@@ -102,6 +103,41 @@ void initialize(LitNode* l) { l->lit = NULL; l->next = NULL; }
 * --Index of a variable must be of type "c2dSize"
 * --The field "mark" below and its related functions should not be changed
 ******************************************************************************/
+
+struct ClausePtrVector
+{
+	Clause** clause = NULL;
+	size_t limit = 5; // Total size of the vector
+	size_t current = 0; //Number of vectors in it at present
+	void add(Clause* c)
+	{
+		if (clause == NULL)
+		{
+			clause = (Clause**)malloc(limit*sizeof(Clause*));
+		}
+		else if (current == limit)
+		{
+			limit *= 2;
+			clause = (Clause**)realloc(clause, limit*sizeof(Clause*));
+			if (clause == NULL)
+			{
+				printf("Was not able to add a new element in vector!!\n");
+				exit(1);
+			}
+
+		}
+		clause[current] = c;
+		current++;
+	}
+};
+
+
+void initialize(ClausePtrVector* c) {
+	c->clause = NULL;
+	c->limit = 5;
+	c->current = 0;
+}
+
 struct var {
 
 	c2dSize index;
@@ -116,7 +152,7 @@ struct var {
 	// number of clauses which contains this var in original CNF
 	// either literal of var counts, so take absolute value
 	c2dSize num_clause_has  = 0;
-	Clause** original_cnf_array = NULL;
+	ClausePtrVector original_cnf_array;
 
 	// Maybe we need this?
 	SatState* state = NULL;
@@ -129,7 +165,6 @@ void initialize(Var* v) {
 		initialize(&(v->neg_lit));
 		v->status = free;
 		v->num_clause_has = 0;
-		v->original_cnf_array = NULL;
 		v->state = NULL;
 	}
 
@@ -175,38 +210,6 @@ void initialize(ClauseNode* c) {
 	c->clause = NULL;
 }
 
-typedef struct ClausePtrVector
-{
-	Clause** clause = NULL;
-	size_t limit = 5; // Total size of the vector
-	size_t current = 0; //Number of vectors in it at present
-	void add(Clause* c)
-	{
-		if (clause == NULL)
-		{
-			clause = (Clause**)malloc(limit*sizeof(Clause*));
-		}
-		else if (current == limit)
-		{
-			limit *= 2;
-			clause = (Clause**) realloc(clause, limit*sizeof(Clause*));
-			if (clause == NULL)
-			{
-				printf("Was not able to add a new element in vector!!\n");
-				exit(1);
-			}
-				
-		}
-		clause[current] = c;
-		current++;
-	}
-} ClausePtrVector;
-
-void initialize(ClausePtrVector* c) {
-	c->clause = NULL;
-	c->limit = 5;
-	c->current = 0;
-}
 
 /******************************************************************************
 * SatState:
