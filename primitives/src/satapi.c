@@ -212,10 +212,122 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
  ******************************************************************************/
 
 //constructs a SatState from an input cnf file
-SatState* sat_state_new(const char* file_name) {
-  // ... TO DO ...
-  
-  return NULL; //dummy valued
+SatState* sat_state_new(char* cnf_fname)
+{
+	FILE* file = fopen(cnf_fname, "r");
+	if (file == NULL) return NULL;
+
+	SatState* state = (SatState *)malloc(sizeof(SatState));
+	initialize(state);
+
+
+	size_t line_size = 50;
+
+	char* line = (char *)malloc(line_size* sizeof(char));
+	
+	while (getline(&line, &line_size, file) != -1)
+	{
+		if (line[0] == 'c' || line[0] == '0' || line[0] == '%')
+		{
+			continue;
+		}
+			
+		if (line[0] == 'p')
+		{
+			char* token;
+			token = strtok(line, " \n\r");
+			token = strtok(NULL, " \n\r");
+			state->num_vars = atoi(strtok(NULL, " \n\r"));
+			printf("Num Vars is %d \n", state->num_vars);
+			state->num_orig_clauses = atoi(strtok(NULL, " \n\r"));
+			printf("Num Original Clauses is %d \n", state->num_orig_clauses);
+
+			printf("Creating Vars...");
+			state->vars = (Var *)malloc((state->num_vars) * sizeof(Var));
+			printf("Created Vars\n");
+
+			printf("Filling in Literals...");
+			int num_vars = state->num_vars;
+			Var* vars = state->vars;
+			for (int i = 0; i < num_vars; i++)
+			{
+				initialize(&(vars[i]));
+				vars[i].index = i + 1;
+				vars[i].state = state;
+				vars[i].neg_lit.index = -(i + 1);
+				vars[i].pos_lit.index = i + 1;
+				vars[i].pos_lit.var = &(vars[i]);
+				vars[i].neg_lit.var = &(vars[i]);
+
+			}
+			printf("Filled in Literals\n");
+
+			continue;
+		}
+		
+			
+		// Otherwise, create a clause
+		Clause* clause = (Clause *)malloc(sizeof(Clause));
+		initialize(clause);
+		
+		// Walk through it once first to count number of literals in clause
+		// By counting the number of spaces in the line
+
+		int num_lits = 0;
+		//printf(line);
+		for (int i = 0; line[i] != '\0'; i++)
+		{
+			if (line[i] == ' ')
+				num_lits++;
+		}
+
+
+		printf("\nThe number of literals in clause is %d \n", num_lits);
+
+		// Walk through it again to point to the literals
+		clause->num_lits = num_lits;
+		clause->literals = (Lit **)malloc(num_lits*sizeof(Lit*));
+		int i = 0;
+
+		char* token = strtok(line, " ");
+
+		while (token != NULL)
+		{
+			if (token[0] == '0')
+				break;
+			int lit_index = atoi(token);
+			Lit* lit;
+			if (lit_index > 0) // pos lit
+				lit = &(state->vars[lit_index - 1].pos_lit);
+			else
+				lit = &(state->vars[(-1 * lit_index) - 1].neg_lit);
+			clause->literals[i] = lit;
+			token = strtok(NULL, " ");
+			i++;
+		} 
+		for (int i = 0; i < num_lits; i++)
+		{
+			printf(" %d ", clause->literals[i]->index);
+		}
+
+		// put the clause into the list of cnfs
+		
+		ClauseNode* clause_node = (ClauseNode *)malloc(sizeof(ClauseNode));
+		clause_node->clause = clause;
+		clause->index = state->num_orig_clauses + 1;
+		state->num_orig_clauses = clause->index;
+		if (state->cnf_head == NULL)
+			state->cnf_head = clause_node;
+		//state->cnf_tail = append_node(clause_node, state->cnf_tail); 
+		if (state->cnf_tail != NULL) {
+			(state->cnf_tail)->next = clause_node;
+		}
+		state->cnf_tail = clause_node;
+		
+		printf("Added clause to cnf\n");
+	}
+
+	return NULL;
 }
 
 //frees the SatState
@@ -442,6 +554,13 @@ BOOLEAN is_lit_duplicate(LitNode* head, Lit* lit) {
 }
 
 LitNode* append_node(LitNode* node, LitNode* tail) {
+  if(tail != NULL) {
+    tail->next = node;
+  }
+  return node;
+}
+
+ClauseNode* append_node(ClauseNode* node, ClauseNode* tail) {
   if(tail != NULL) {
     tail->next = node;
   }
