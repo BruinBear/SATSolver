@@ -575,65 +575,71 @@ void sat_state_free(SatState* sat_state) {
  ******************************************************************************/
 
 Lit* get_free_literal_from_clause(Clause* c) {
-  for(unsigned int i = 0; i < c->lit_size; i++) {
-    if(c->literals[i]->var.status == free) {
-      return c->literals[i];
-    }
-  }
-  return NULL;
+	for (unsigned int i = 0; i < c->num_lits; i++) {
+		if (c->literals[i]->var->status == free) {
+			return c->literals[i];
+		}
+	}
+	return NULL;
 }
 
-LitNode* append(LitNode* head, LitNode* new) {
-  LitNode* tmp = head;
-  if(head!= NULL) {
-    while(head->next!=NULL)
-      head = head->next;
-    head->next = new;
-    return tmp;
-  } else { // just one
-    return new;
-  }
+LitNode* append(LitNode* head, LitNode* n) {
+	LitNode* tmp = head;
+	if (head != NULL) {
+		while (head->next != NULL)
+			head = head->next;
+		head->next = n;
+		return tmp;
+	}
+	else { // just one
+		return n;
+	}
 }
+
 
 // return true if no conflict
 // else return false and assign a clause to conflict reason
 BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
-  if(lit->index > 0) {
-    lit->var->status = implied_pos;
-  } else {
-    lit->var->status = implied_neg;
-  }
+	if (lit->index > 0) {
+		lit->var->status = implied_pos;
+	}
+	else {
+		lit->var->status = implied_neg;
+	}
 
-  ClauseNode* subsumed_head = lit->clauses;
-  ClauseNode* resolved_head = flip_lit(lit)->clauses;
-  // increament subsumed clauses
-  while(subsumed_head!=NULL) {
-    subsumed_head->clause->subsuming_literal_count++;
-    subsumed_head->clause->free_literal_count--;
-    subsumed_head = head->next;
-  }
-  // resolve
-  while(resolved_head!=NULL) {
-    resolved_head->clause->free_literal_count--;
-    if(resolved_head->clause->subsuming_literal_count == 0 &&
-          resolved_head->clause->free_literal_count == 0) {//conflict
-      sat_state->conflict_reason = resolved_head->clause;
-      return false;
-    } else if(resolved_head->clause->subsuming_literal_count == 0 &&
-                  resolved_head->clause->free_literal_count == 1){
-      Lit* new_implied = get_free_literal_from_clause(resolved_head->clause);
-      new_implied->level = lit->level;
-      // set level
-      // add the newly implied literal
-      sat_state->implied = append(sat_state->implied, &(LitNode){sat_state->implied, new_implied});
-    }
-    resolved_head = resolved_head->next;
-  }
-  return true;
+	ClauseNode* subsumed_head = lit->clauses;
+	ClauseNode* resolved_head = flip_lit(lit)->clauses;
+	// increament subsumed clauses
+	while (subsumed_head != NULL) {
+		subsumed_head->clause->subsuming_literal_count++;
+		subsumed_head->clause->free_literal_count--;
+		subsumed_head = subsumed_head->next;
+	}
+	// resolve
+	while (resolved_head != NULL) {
+		resolved_head->clause->free_literal_count--;
+		if (resolved_head->clause->subsuming_literal_count == 0 &&
+			resolved_head->clause->free_literal_count == 0) {//conflict
+			sat_state->conflict_reason = resolved_head->clause;
+			return false;
+		}
+		else if (resolved_head->clause->subsuming_literal_count == 0 &&
+			resolved_head->clause->free_literal_count == 1){
+			Lit* new_implied = get_free_literal_from_clause(resolved_head->clause);
+			new_implied->level = lit->level;
+			// set level
+			// add the newly implied literal
+			LitNode* lnode = (LitNode*)malloc(sizeof(LitNode));
+			initialize(lnode);
+			lnode->lit = new_implied;
+			sat_state->implied_literals = append(sat_state->implied_literals, lnode);
+		}
+		resolved_head = resolved_head->next;
+	}
+	return true;
 }
 
 void unmark_a_literal(SatState* sat_state, Lit* lit) {
-
 	ClauseNode* subsumed_head = lit->clauses;
 	ClauseNode* resolved_head = flip_lit(lit)->clauses;
 	// increament subsumed clauses
