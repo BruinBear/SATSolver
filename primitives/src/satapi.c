@@ -131,6 +131,7 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
 	// Do unit res
 	// If succeed, return NULL
 	// else return asserting clause
+	sat_state->call_stat = decide_call;
 	if (sat_unit_resolution(sat_state))
 		return NULL;
 	else
@@ -217,6 +218,7 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
 	// Do unit resolution
 	// If unit resolution succeeded, return NULL
 	// else return asserting clause
+	sat_state->call_stat = learn_call;
 	if (sat_unit_resolution(sat_state))
 		return NULL;
 	else
