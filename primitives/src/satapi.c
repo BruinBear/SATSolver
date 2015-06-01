@@ -143,10 +143,46 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
 //if the current decision level is L in the beginning of the call, it should be updated 
 //to L-1 before the call ends
 void sat_undo_decide_literal(SatState* sat_state) {
-  unmark_a_literal(sat_state, get_last_literal(sat_state));
-  return; //dummy valued
-}
+	assert(sat_state != NULL);
+	if (sat_state->decided_literals == NULL)
+		return;
 
+	LitNode* last_decision = sat_state->decided_literals;
+	c2dSize last_level = last_decision->lit->level;
+
+	// Unmark the last decision, set var status to free, and set level of literal to 1
+	unmark_a_literal(sat_state, last_decision->lit);
+	last_decision->lit->var->status = free;
+	last_decision->lit->level = 1;
+
+	// delete node from list
+	sat_state->decided_literals = sat_state->decided_literals->next;
+	free(last_decision);
+
+	// For each implied literal at the last decision level, unmark it, set var status to free, and set level of literal to 1
+	// and remove node from list
+	LitNode* lnode = sat_state->implied_literals;
+	LitNode* lnode_next = lnode;
+
+	while (lnode_next != NULL)
+	{
+		lnode_next = lnode_next->next;
+		if (lnode->lit->level == last_level)
+		{
+			
+			unmark_a_literal(sat_state, lnode->lit);
+			lnode->lit->var->status = free;
+			lnode->lit->level = 1;
+
+			free(lnode);
+			
+		}
+		lnode = lnode_next;
+	}
+	
+	
+	return; //dummy valued
+}
 /******************************************************************************
  * Clauses 
  ******************************************************************************/
