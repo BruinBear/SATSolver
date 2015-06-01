@@ -163,17 +163,17 @@ BOOLEAN sat_subsumed_clause(const Clause* clause) {
 
 //returns the number of clauses in the cnf of sat state
 c2dSize sat_clause_count(const SatState* sat_state) {
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+	if (sat_state->cnf_tail == NULL)
+		return 0;
+	return sat_state->cnf_tail->clause->index;
 }
 
 //returns the number of learned clauses in a sat state (0 when the sat state is constructed)
 c2dSize sat_learned_clause_count(const SatState* sat_state) {
 
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+	if (sat_state->cnf_tail == NULL)
+		return 0;
+	return (sat_state->cnf_tail->clause->index) - (sat_state->num_orig_clauses);
 }
 
 
@@ -185,10 +185,28 @@ c2dSize sat_learned_clause_count(const SatState* sat_state) {
 //this function is called on a clause returned by sat_decide_literal() or sat_assert_clause()
 //moreover, it should be called only if sat_at_assertion_level() succeeds
 Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
+	// Assume clause isn't empty
+	assert(clause != NULL);
+	
+	// Add the learned clause to the cnf
+	ClauseNode* cnode = (ClauseNode*)malloc(sizeof(ClauseNode));
+	initialize(cnode);
+	cnode->clause = clause;
+	sat_state->cnf_tail = append_node(cnode, sat_state->cnf_tail);
 
-  // ... TO DO ...
-  
-  return NULL; //dummy valued
+
+	// Set the contradicting clause in sat_state to NULL
+	sat_state->conflict_reason = NULL;
+
+	// Do unit resolution
+	// If unit resolution succeeded, return NULL
+	// else return asserting clause
+	if (sat_unit_resolution(sat_state))
+		return NULL;
+	else
+		return get_asserting_clause(sat_state);
+	
+	
 }
 
 /******************************************************************************
@@ -659,9 +677,41 @@ void sat_undo_unit_resolution(SatState* sat_state) {
 //it is used to decide whether the sat state is at the right decision level for adding clause.
 BOOLEAN sat_at_assertion_level(const Clause* clause, const SatState* sat_state) {
 
-  // ... TO DO ...
-  
-  return 0; //dummy valued
+	// Assume clause isn't NULL and has more than 1 literal
+	assert(clause != NULL && clause->num_lits > 0);
+
+	c2dSize decision_level;
+	if (sat_state->decided_literals == NULL)
+		decision_level = 1;
+	else
+		decision_level = sat_state->decided_literals->lit->level;
+
+	if (clause->num_lits == 1)
+		return (1 == decision_level);
+
+	c2dSize assertion_level = (clause->literals[0]->level);
+	c2dSize highest_level = (clause->literals[0]->level);
+
+	if (clause->literals[0]->level > clause->literals[1]->level)
+		assertion_level = clause->literals[1]->level;
+	else
+		highest_level = clause->literals[1]->level;
+
+
+	for (int i = 2; i < clause->num_lits; i++)
+	{
+		if (clause->literals[i]->level > highest_level)
+		{
+			assertion_level = highest_level;
+			highest_level = clause->literals[i]->level;
+		}
+		else if (clause->literals[i]->level > assertion_level)
+		{
+			assertion_level = clause->literals[i]->level;
+		}
+	}
+
+	return decision_level == assertion_level; 
 }
 
 /******************************************************************************
