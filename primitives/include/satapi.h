@@ -156,8 +156,8 @@ struct var {
 
 	c2dSize index;
 
-	Lit pos_lit;
-	Lit neg_lit;
+	Lit* pos_lit = NULL;
+	Lit* neg_lit = NULL;
 	BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
 	litstat status = free; // free, implied_pos or implied_neg (by decision/unit resolution), 
@@ -175,14 +175,15 @@ struct var {
 };
 
 void initialize(Var* v) {
-		initialize(&(v->pos_lit));
-		initialize(&(v->neg_lit));
+	v->pos_lit = (Lit*)malloc(sizeof(Lit));
+	v->neg_lit = (Lit*)malloc(sizeof(Lit));
+		initialize(v->pos_lit);
+		initialize(v->neg_lit);
 		v->status = free;
 		v->num_clause_has = 0;
 		v->state = NULL;
 		initialize(&v->original_cnf_array);
-}
-
+	}
 /******************************************************************************
 * Clauses:
 * --You must represent clauses using the following struct
