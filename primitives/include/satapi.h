@@ -50,7 +50,14 @@ typedef double c2dWmc;          //for (weighted) model count
 // by decision or unit res
 #define implied_neg 2
 #define conflicting 3 // Both implied_pos and implied_neg
+
+
+#define first_call 1
+#define decide_call 2
+#define learn_call 3
+
 typedef char litstat;
+typedef char callstat;
 
 
 /****************************************/
@@ -242,7 +249,7 @@ struct sat_state_t {
 	// the highest decision level
 	Clause* conflict_reason = NULL;
 	LitNode* implied_literals = NULL; // stack.
-
+  callstat call_stat = first_call;
 };
 
 void initialize(SatState* s) {
@@ -256,6 +263,7 @@ void initialize(SatState* s) {
 	s->decided_literals = NULL;
 	s->conflict_reason = NULL;
 	s->implied_literals = NULL;
+  s->call_stat = first_call;
 }
 
 LitNode* append_node(LitNode* node, LitNode* tail) {
