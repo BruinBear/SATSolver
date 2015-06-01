@@ -42,7 +42,7 @@ Clause* sat_aux(SatState* sat_state) {
 BOOLEAN sat(SatState* sat_state) {
   BOOLEAN ret = 0;
   if(sat_unit_resolution(sat_state)) ret = (sat_aux(sat_state)==NULL? 1: 0);
-  sat_undo_unit_resolution(sat_state); // everything goes back to the initial state
+  // sat_undo_unit_resolution(sat_state); // everything goes back to the initial state
   return ret;
 }
 

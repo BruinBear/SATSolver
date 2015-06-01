@@ -533,29 +533,40 @@ Lit* get_free_literal_from_clause(Clause* c) {
   return NULL;
 }
 
-void append(LitNode* head, LitNode* new) {
+LitNode* append(LitNode* head, LitNode* new) {
+  LitNode* tmp = head;
   if(head!= NULL) {
     while(head->next!=NULL)
       head = head->next;
     head->next = new;
+    return tmp;
+  } else { // just one
+    return new;
   }
 }
 
-
+// return true if no conflict
+// else return false and assign a clause to conflict reason
 BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
+  if(lit->index > 0) {
+    lit->var->status = implied_pos;
+  } else {
+    lit->var->status = implied_neg;
+  }
+
   ClauseNode* subsumed_head = lit->clauses;
   ClauseNode* resolved_head = flip_lit(lit)->clauses;
   // increament subsumed clauses
   while(subsumed_head!=NULL) {
     subsumed_head->clause->subsuming_literal_count++;
+    subsumed_head->clause->free_literal_count--;
     subsumed_head = head->next;
   }
   // resolve
   while(resolved_head!=NULL) {
     resolved_head->clause->free_literal_count--;
     if(resolved_head->clause->subsuming_literal_count == 0 &&
-          resolved_head->clause->free_literal_count == 0) {
-      conflict = true;
+          resolved_head->clause->free_literal_count == 0) {//conflict
       sat_state->conflict_reason = resolved_head->clause;
       return false;
     } else if(resolved_head->clause->subsuming_literal_count == 0 &&
@@ -564,7 +575,7 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
       new_implied->level = lit->level;
       // set level
       // add the newly implied literal
-      append(sat_state->implied, &(LitNode){sat_state->implied, new_implied});
+      sat_state->implied = append(sat_state->implied, &(LitNode){sat_state->implied, new_implied});
     }
     resolved_head = resolved_head->next;
   }
@@ -572,6 +583,9 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
 }
 
 void unmark_a_literal(SatState* sat_state, Lit* lit) {
+  //free variable
+  lit->var->status = free;
+
   ClauseNode* subsumed_head = lit->clauses;
   ClauseNode* resolved_head = flip_lit(lit)->clauses;
   // increament subsumed clauses
@@ -594,23 +608,62 @@ void unmark_a_literal(SatState* sat_state, Lit* lit) {
 //applies unit resolution to the cnf of sat state
 //returns 1 if unit resolution succeeds, 0 if it finds a contradiction
 BOOLEAN sat_unit_resolution(SatState* sat_state) {
-  // ... TO DO ...
-  LitNode* decided = sat_state->decided_literals;
-  LitNode* implied = sat_state->implied_literals;
+  if(sat_state->call_stat == first_call) {
+    LitNode* tmp = sat_state->implied_literals;
+    while(tmp!=NULL) {
+      if(!mark_a_literal(sat_state, tmp->lit)) {
+        return 0;
+      }
+      tmp = tmp->next
+    }
+  } else if (sat_state->call_stat == decide_call) { // mark on a decision
+    LitNode* tmp = sat_state->implied_literals;
+    if(tmp!=NULL) {
+      while(tmp->next!=NULL)
+      tmp=tmp->next;
+    }
+    if(mark_a_literal(sat_state, sat_state->decided_literals->lit))
+      return 0;
+    // if originally no implied
+    if(tmp == NULL) {
+      tmp = sat_state->implied_literals;
+    } else {
+      tmp = tmp->next;
+    }
+    while(tmp!=NULL) {
+      if(!mark_a_literal(sat_state, tmp->lit)) {
+        return 0;
+      }
+      tmp = tmp->next
+    }
+  } else if (sat_state->call_stat == learn_call) {
 
-  while(implied != NULL) {
-    Lit* l = implied->lit;
-    // if contradiction return 0
-    if(!mark_a_literal(sat_state, l))
+    Clause* c = cnf_tail->clause;
+    if(c->subsuming_literal_count!=0 && c->free_literal_count==0){ // conflict
+      sat_state->conflict_reason = c;
       return 0;
-    implied = implied->next;
-  }
-  while(decided!= NULL) {
-    Lit * l = decided->lit;
-    // if contradiction return 0
-    if(!mark_a_literal(sat_state, l))
-      return 0;
-    decided = decided->next;
+    } else if (c->subsuming_literal_count!=0 && c->free_literal_count==1) { // new imply
+      LitNode* tmp = sat_state->implied_literals;
+      // tmp is now the tail;
+      if(tmp!=NULL) {
+        while(tmp->next!=NULL)
+        tmp=tmp->next;
+      }
+      if(!mark_a_literal(sat_state, get_free_literal_from_clause(c))){
+          return 0;
+      }
+      if(tmp == NULL) {
+      tmp = sat_state->implied_literals;
+      } else {
+        tmp = tmp->next;
+      }
+      while(tmp!=NULL) {
+        if(!mark_a_literal(sat_state, tmp->lit)) {
+          return 0;
+        }
+        tmp = tmp->next
+      }
+    }
   }
   return 1;
 }
@@ -733,8 +786,25 @@ unsigned long get_last_level(Clause* reason) {
   return last_level;
 }
 
-
 Clause* make_clause_from_lit(LitNode* a, LitNode* b) {
+  Clause* clause = (Clause *)malloc(sizeof(Clause));
+  initialize(clause);
+  unsigned int i = 1;
+  LitNode* tmp = b;
+  while(tmp!=NULL) {
+    i++;
+    tmp=tmp->next;
+  }
+  clause->num_lits = i;
+  clause->literals = (Lit **)malloc(clause->num_lits*sizeof(Lit*));
+  clause->literals[0] = a->lit;
+  i=1;
+  tmp = b;
+  while(b!=NULL) {
+    clause->literals[i] = tmp->lit;
+    tmp = tmp->next;
+    i++;
+  }
 
 }
 
