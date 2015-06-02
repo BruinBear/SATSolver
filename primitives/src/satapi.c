@@ -1089,6 +1089,9 @@ Clause* get_asserting_clause(SatState* sat_state) {
 			// add literals in the reason to last_level queue and literal list
 			Clause* reason = head_lit->reason;
 			for (unsigned long i = 0; i < reason->num_lits; i++) {
+				if(flip_lit(q_head->lit) == reason->literals[i]) {
+					continue;
+				}
 				LitNode* node = &((LitNode) { NULL, flip_lit(reason->literals[i]) });
 				if (reason->literals[i]->level == last_level) { // last level node added to queue
 					if (!is_lit_duplicate(q_head, node->lit)) {
