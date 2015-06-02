@@ -7,26 +7,26 @@
 #include <assert.h>
 
 /******************************************************************************
- * sat_api.h shows the function prototypes you should implement to create libsat.a
- *
- * To use the sat library, a sat state should be constructed from an input cnf file
- *
- * The sat state supports functions that are usually used to implement a sat solver,
- * such as deciding variables and learning clauses. It also supports functions for
- * obtaining stats about the input cnf, such as the number of variables and clauses.
- *
- * The functions supported by a sat state are sufficient to implement a modern sat
- * solver (also known as CDC solver).
- *
- * A sat state has a "decision level", which is incremented when a literal is
- * decided, and decremented when a literal is undecided. Hence, each decided
- * literal is associated with a decision level. Similarly, literals which are implied
- * by unit resolution are also associated with a decision level.
- *
- * A learned clause is associated with an "assertion level". The clause can be 
- * asserted (added) to a state state only when the decision level of the sat 
- * state equals to the clause's assertion level.
- ******************************************************************************/
+* sat_api.h shows the function prototypes you should implement to create libsat.a
+*
+* To use the sat library, a sat state should be constructed from an input cnf file
+*
+* The sat state supports functions that are usually used to implement a sat solver,
+* such as deciding variables and learning clauses. It also supports functions for
+* obtaining stats about the input cnf, such as the number of variables and clauses.
+*
+* The functions supported by a sat state are sufficient to implement a modern sat
+* solver (also known as CDC solver).
+*
+* A sat state has a "decision level", which is incremented when a literal is
+* decided, and decremented when a literal is undecided. Hence, each decided
+* literal is associated with a decision level. Similarly, literals which are implied
+* by unit resolution are also associated with a decision level.
+*
+* A learned clause is associated with an "assertion level". The clause can be
+* asserted (added) to a state state only when the decision level of the sat
+* state equals to the clause's assertion level.
+******************************************************************************/
 
 /******************************************************************************
 * typedefs
@@ -45,7 +45,7 @@ typedef double c2dWmc;          //for (weighted) model count
 #define true 1
 #define false 0
 
-#define free 0
+#define free_var 0
 #define implied_pos 1 // the positive literal of the variable is implied
 // by decision or unit res
 #define implied_neg 2
@@ -87,28 +87,20 @@ typedef struct ClausePtrVector ClausePtrVector;
 
 struct literal {
 	c2dLiteral index;
-	unsigned long level = 1;
-	ClauseNode* clauses = NULL;
-	ClauseNode* clauses_tail = NULL;
-	Var* var = NULL;
-	Clause* reason = NULL; // the reason why literal was implied
+	unsigned long level;
+	ClauseNode* clauses;
+	ClauseNode* clauses_tail;
+	Var* var;
+	Clause* reason; // the reason why literal was implied
 	// NULL if literal is free or decided
 
 };
 
-void initialize(Lit* l) { 
-	l->level = 1; 
-	l->clauses = NULL; 
-	l->clauses_tail = NULL;
-	l->var = NULL; 
-	l->reason = NULL; 
-}
-
 struct LitNode {
-	LitNode* next = NULL;
-	Lit* lit = NULL;
+	LitNode* next;
+	Lit* lit;
 };
-void initialize(LitNode* l) { l->lit = NULL; l->next = NULL; }
+
 
 /******************************************************************************
 * Variables:
@@ -120,70 +112,35 @@ void initialize(LitNode* l) { l->lit = NULL; l->next = NULL; }
 
 struct ClausePtrVector
 {
-	Clause** clause = NULL;
-	size_t limit = 5; // Total size of the vector
-	size_t current = 0; //Number of vectors in it at present
-	void add(Clause* c)
-	{
-		if (clause == NULL)
-		{
-			clause = (Clause**)malloc(limit*sizeof(Clause*));
-		}
-		else if (current == limit)
-		{
-			limit *= 2;
-			clause = (Clause**)realloc(clause, limit*sizeof(Clause*));
-			if (clause == NULL)
-			{
-				printf("Was not able to add a new element in vector!!\n");
-				exit(1);
-			}
-
-		}
-		clause[current] = c;
-		current++;
-	}
+	Clause** clause;
+	size_t limit; // Total size of the vector
+	size_t current; //Number of vectors in it at present
+	
 };
 
-
-void initialize(ClausePtrVector* c) {
-	c->clause = NULL;
-	c->limit = 5;
-	c->current = 0;
-}
 
 struct var {
 
 	c2dSize index;
 
-	Lit* pos_lit = NULL;
-	Lit* neg_lit = NULL;
+	Lit* pos_lit;
+	Lit* neg_lit;
 	BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
-	litstat status = free; // free, implied_pos or implied_neg (by decision/unit resolution), 
+	litstat status; // free, implied_pos or implied_neg (by decision/unit resolution), 
 
 	// TODO:
 	// number of clauses which contains this var in original CNF
 	// either literal of var counts, so take absolute value
-	c2dSize num_clause_has  = 0;
+	c2dSize num_clause_has;
 	ClausePtrVector original_cnf_array;
 
 	// Maybe we need this?
-	SatState* state = NULL;
+	SatState* state;
 
-	
+
 };
 
-void initialize(Var* v) {
-	v->pos_lit = (Lit*)malloc(sizeof(Lit));
-	v->neg_lit = (Lit*)malloc(sizeof(Lit));
-		initialize(v->pos_lit);
-		initialize(v->neg_lit);
-		v->status = free;
-		v->num_clause_has = 0;
-		v->state = NULL;
-		initialize(&v->original_cnf_array);
-	}
 /******************************************************************************
 * Clauses:
 * --You must represent clauses using the following struct
@@ -196,37 +153,26 @@ void initialize(Var* v) {
 
 struct clause {
 	c2dSize index;
-	Lit** literals = NULL;
-	c2dSize num_lits = 0;
+	Lit** literals;
+	c2dSize num_lits;
 	BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
 	// the number of fixed literals that make this clause subsumed
 	// 0 when not subsumed.
-	unsigned long subsuming_literal_count = 0;
-	 unsigned long free_literal_count = 0; 
+	unsigned long subsuming_literal_count;
+	unsigned long free_literal_count;
 
-	Lit* watch1 = NULL;
-	Lit* watch2 = NULL;
+	Lit* watch1;
+	Lit* watch2;
 };
 
-void initialize(Clause * c) {
-		c->literals = NULL;
-		c->num_lits = 0;
-		c->subsuming_literal_count = 0;
-    		c->free_literal_count = 0;
-		c->watch1 = NULL;
-		c->watch2 = NULL;
-}
+
 
 struct ClauseNode {
-	ClauseNode* next = NULL;
-	Clause* clause = NULL;
+	ClauseNode* next;
+	Clause* clause;
 };
 
-void initialize(ClauseNode* c) {
-	c->next = NULL;
-	c->clause = NULL;
-}
 
 
 /******************************************************************************
@@ -236,67 +182,40 @@ void initialize(ClauseNode* c) {
 ******************************************************************************/
 
 struct sat_state_t {
-	Var* vars = NULL;
-	c2dSize num_vars = 0;
+	Var* vars;
+	c2dSize num_vars;
 
-	ClauseNode* cnf_head = NULL;
-	ClauseNode* cnf_tail = NULL;
-	c2dSize num_orig_clauses = 0;
-	c2dSize num_asserted_clauses = 0;
+	ClauseNode* cnf_head;
+	ClauseNode* cnf_tail;
+	c2dSize num_orig_clauses;
+	c2dSize num_asserted_clauses;
 
-	c2dSize assertion_level = 1;
+	c2dSize assertion_level;
 
-	LitNode* decided_literals = NULL; // stack. The head literal is at
+	LitNode* decided_literals; // stack. The head literal is at
 	// the highest decision level
-	Clause* conflict_reason = NULL;
-	LitNode* implied_literals = NULL; // stack.
-  callstat call_stat = first_call;
+	Clause* conflict_reason;
+	LitNode* implied_literals; // stack.
+	callstat call_stat;
 };
 
-void initialize(SatState* s) {
-	s->vars = NULL;
-	s->num_vars = 0;
-	s->cnf_head = NULL;
-	s->cnf_tail = NULL;
-	s->num_orig_clauses = 0;
-	s->num_asserted_clauses = 0;
-	s->assertion_level = 1;
-	s->decided_literals = NULL;
-	s->conflict_reason = NULL;
-	s->implied_literals = NULL;
-  s->call_stat = first_call;
-}
-
-LitNode* append_node(LitNode* node, LitNode* tail) {
-			 if (tail != NULL) {
-				 tail->next = node;
-			 }
-			 return node;
-}
-
-ClauseNode* append_node(ClauseNode* node, ClauseNode* tail) {
-	if (tail != NULL) {
-		tail->next = node;
-	}
-	return node;
-}
 
 /******************************************************************************
- * API: 
- * --Using the above structures you must implement the following functions 
- * --Incomplete implementations of the functions can be found in sat_api.c
- * --These functions are all you need for the knowledge compiler
- * --You must implement each function below
- * --Note that most of the functions can be implemented in 1 line or so
- ******************************************************************************/
+* API:
+* --Using the above structures you must implement the following functions
+* --Incomplete implementations of the functions can be found in sat_api.c
+* --These functions are all you need for the knowledge compiler
+* --You must implement each function below
+* --Note that most of the functions can be implemented in 1 line or so
+******************************************************************************/
 
 /******************************************************************************
- * function prototypes 
- ******************************************************************************/
+* function prototypes
+******************************************************************************/
 
 /******************************************************************************
- * Variables
- ******************************************************************************/
+* Variables
+******************************************************************************/
 
 //returns a variable structure for the corresponding index
 Var* sat_index2var(c2dSize index, const SatState* sat_state);
@@ -327,8 +246,8 @@ c2dSize sat_var_occurences(const Var* var);
 Clause* sat_clause_of_var(c2dSize index, const Var* var);
 
 /******************************************************************************
- * Literals 
- ******************************************************************************/
+* Literals
+******************************************************************************/
 
 //returns a literal structure for the corresponding index
 Lit* sat_index2literal(c2dLiteral index, const SatState* sat_state);
@@ -355,8 +274,8 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state);
 void sat_undo_decide_literal(SatState* sat_state);
 
 /******************************************************************************
- * Clauses 
- ******************************************************************************/
+* Clauses
+******************************************************************************/
 
 //returns a clause structure for the corresponding index
 Clause* sat_index2clause(c2dSize index, const SatState* sat_state);
@@ -387,8 +306,8 @@ c2dSize sat_learned_clause_count(const SatState* sat_state);
 Clause* sat_assert_clause(Clause* clause, SatState* sat_state);
 
 /******************************************************************************
- * SatState
- ******************************************************************************/
+* SatState
+******************************************************************************/
 
 //constructs a SatState from an input cnf file
 SatState* sat_state_new(const char* file_name);
@@ -412,8 +331,8 @@ void sat_undo_unit_resolution(SatState* sat_state);
 BOOLEAN sat_at_assertion_level(const Clause* clause, const SatState* sat_state);
 
 /******************************************************************************
- * The functions below are already implemented for you and MUST STAY AS IS
- ******************************************************************************/
+* The functions below are already implemented for you and MUST STAY AS IS
+******************************************************************************/
 
 //returns the weight of a literal (which is simply 1 for our purposes)
 c2dWmc sat_literal_weight(const Lit* lit);
@@ -442,16 +361,22 @@ void sat_unmark_clause(Clause* clause);
 /*******************************/
 
 // Add toBeAdded in front of head
-void add_lit_h(LitNode** head, Lit* toBeAdded);
 Clause* get_asserting_clause(SatState* sat_state);
-
-
-
-
+void unmark_a_literal(SatState* sat_state, Lit* lit);
+Lit* flip_lit(Lit* lit);
+void initialize_Lit(Lit* l);
+void initialize_LitNode(LitNode* l);
+void add(ClausePtrVector* cv, Clause* c);
+void initialize_ClausePtrVector(ClausePtrVector* c);
+void initialize_Var(Var* v);
+void initialize_Clause(Clause * c);
+void initialize_ClauseNode(ClauseNode* c);
+void initialize_SatState(SatState* s);
+LitNode* append_node_LitNode(LitNode* node, LitNode* tail);
+ClauseNode* append_node_ClauseNode(ClauseNode* node, ClauseNode* tail);
 
 #endif //SATAPI_H_
 
 /******************************************************************************
- * end
- ******************************************************************************/
-
+* end
+******************************************************************************/
