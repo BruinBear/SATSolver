@@ -374,7 +374,10 @@ void initialize_ClauseNode(ClauseNode* c);
 void initialize_SatState(SatState* s);
 LitNode* append_node_LitNode(LitNode* node, LitNode* tail);
 ClauseNode* append_node_ClauseNode(ClauseNode* node, ClauseNode* tail);
-
+unsigned int count_free_lit(Clause* c);
+unsigned int count_subsumed_lit(Clause* c);
+void print_sat_state_clauses(SatState* sat_state);
+void print_clause(Clause* c);
 #endif //SATAPI_H_
 
 /******************************************************************************

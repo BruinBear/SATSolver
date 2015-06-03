@@ -45,7 +45,7 @@ BOOLEAN sat_irrelevant_var(const Var* var) {
   for (unsigned int i = 0; i < size; i++)
   {
     // this clause isn't subsumed
-    if (c[i]->subsuming_literal_count == 0)
+    if (count_subsumed_lit(c[i]) == 0)
       return false;
   }
   return true;
@@ -113,6 +113,7 @@ BOOLEAN sat_implied_literal(const Lit* lit) {
 //to L+1 so that the decision level of lit and all other literals implied by unit resolution is L+1
 Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
   // Set the level of lit
+  printf("\n***decide literal %d\n",lit->index);
   lit->level = (sat_state->decided_literals == NULL) ? 2 : (sat_state->decided_literals->lit->level + 1);
 
   // Set reason to be NULL, since it's decided!
@@ -137,10 +138,15 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
   sat_state->call_stat = decide_call;
   
   // test
-  if (sat_unit_resolution(sat_state))
+  if (sat_unit_resolution(sat_state)) {
     return NULL;
-  else
-    return get_asserting_clause(sat_state);
+  }
+  else {
+    printf("Asserting clause learned\n");
+    Clause* c =     get_asserting_clause(sat_state);
+    print_clause(c);
+    return c;
+  }
 }
 
 //undoes the last literal decision and the corresponding implications obtained by unit resolution
@@ -167,6 +173,18 @@ void sat_undo_decide_literal(SatState* sat_state) {
   // For each implied literal at the last decision level, unmark it, set var status to free, and set level of literal to 1
   // and remove node from list
   LitNode* lnode = sat_state->implied_literals;
+  // LitNode* prev = NULL;
+  // while(lnode!=NULL) {
+  //   if (lnode->lit->level == last_level) {
+  //     if(prev = NULL) {
+  //       sat_state->implied_literals = NULL;
+  //     } else {
+  //       prev->next = NULL;
+  //     }
+  //   }
+  //   prev = lnode;
+  //   lnode = lnode->next;
+  // }
   LitNode* lnode_next = lnode;
 
   while (lnode_next != NULL)
@@ -221,7 +239,7 @@ c2dSize sat_clause_size(const Clause* clause) {
 
 //returns 1 if the clause is subsumed, 0 otherwise
 BOOLEAN sat_subsumed_clause(const Clause* clause) {
-  return clause->subsuming_literal_count != 0;
+  return count_subsumed_lit(clause) != 0;
 }
 
 //returns the number of clauses in the cnf of sat state
@@ -363,7 +381,7 @@ SatState* sat_state_new(const char* cnf_fname)
         num_lits++;
     }
     // This is the same as the number of free literals
-    clause->free_literal_count = num_lits;
+    // clause->free_literal_count = num_lits;
 
     printf("\nThe number of literals in clause is %d \n", num_lits);
 
@@ -532,7 +550,7 @@ void sat_state_free(SatState* sat_state) {
     while (ptr != NULL)
     {
       ptr = ptr->next;
-      printf("\nFreed Positive Literal %d's Clause", i+1);
+      // printf("\nFreed Positive Literal %d's Clause", i+1);
       free(pos_lit_c);
       pos_lit_c = ptr;
     }
@@ -540,14 +558,14 @@ void sat_state_free(SatState* sat_state) {
     while (ptr != NULL)
     {
       ptr = ptr->next;
-      printf("\nFreed Negative Literal %d's Clause", i+1);
+      // printf("\nFreed Negative Literal %d's Clause", i+1);
       free(neg_lit_c);
       neg_lit_c = ptr;
     }
 
     // For each var, delete original_cnf_array (delete the array in this vector)
     free((sat_state->vars[i].original_cnf_array).clause);
-    printf("\nFreed variable %d", i + 1);
+    // printf("\nFreed variable %d", i + 1);
 
   }
 
@@ -654,7 +672,7 @@ LitNode* append(LitNode* head, LitNode* n) {
 // return true if no conflict
 // else return false and assign a clause to conflict reason
 BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
-  printf("mark a literal called\n");
+  printf("\nmark a literal: %d called\n", lit->index);
   // return true;
 
   if (lit->index > 0) {
@@ -663,33 +681,60 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
   else {
     lit->var->status = implied_neg;
   }
-  ClauseNode* subsumed_head = lit->clauses;
+  // ClauseNode* subsumed_head = lit->clauses;
   ClauseNode* resolved_head = flip_lit(lit)->clauses;
-  printf("mark subsumed clauses\n");
-
+  // printf("  mark subsumed clauses\n");
   // increament subsumed clauses
-  while (subsumed_head != NULL) {
-    subsumed_head->clause->subsuming_literal_count++;
-    subsumed_head->clause->free_literal_count--;
-    subsumed_head = subsumed_head->next;
-  }
+  // while (subsumed_head != NULL) {
+  //   subsumed_head->clause->subsuming_literal_count++;
+  //   // subsumed_head->clause->free_literal_count--;
+  //   subsumed_head = subsumed_head->next;
+  // }
   // resolve
   while (resolved_head != NULL) {
-    printf("mark resolved clauses\n");
+    printf("  mark resolved clauses\n");
+      printf("    free count: %d\nsubsumed count: %d\n", count_free_lit(resolved_head->clause), count_subsumed_lit(resolved_head->clause));
+      printf("    print clause\n");
+      for (unsigned int i = 0; i < resolved_head->clause->num_lits; i++) {
+        printf(" %d", resolved_head->clause->literals[i]->index);
+        if(resolved_head->clause->literals[i]->var->status == free_var)
+          printf("(free) ");
+        else if(resolved_head->clause->literals[i]->var->status == implied_pos)
+          printf("(pos) ");
+        else if(resolved_head->clause->literals[i]->var->status == implied_neg)
+          printf("(neg) ");
+      }
+      printf("\n");
 
-    resolved_head->clause->free_literal_count--;
-    if (resolved_head->clause->subsuming_literal_count == 0 &&
-      resolved_head->clause->free_literal_count == 0) {//conflict
-        printf("resolve lead to a conflict\n");
+    // resolved_head->clause->free_literal_count--;
+    if (count_subsumed_lit(resolved_head->clause) == 0 &&
+      count_free_lit(resolved_head->clause) == 0) {//conflict
+      printf("    resolve lead to a conflict\n");
       sat_state->conflict_reason = resolved_head->clause;
       return false;
     }
-    else if (resolved_head->clause->subsuming_literal_count == 0 &&
-      resolved_head->clause->free_literal_count == 1){
-      printf("resolve lead to a new implied\n");
+    else if (count_subsumed_lit(resolved_head->clause) == 0 &&
+      count_free_lit(resolved_head->clause) == 1){
+      printf("    resolve lead to a new implied\n");
+      printf("    free count: %d\nsubsumed count: %d\n", count_free_lit(resolved_head->clause), count_subsumed_lit(resolved_head->clause));
+      printf("    print clause\n");
+
+      for (unsigned int i = 0; i < resolved_head->clause->num_lits; i++) {
+        printf(" %d", resolved_head->clause->literals[i]->index);
+        if(resolved_head->clause->literals[i]->var->status == free_var)
+          printf("(free) ");
+        else if(resolved_head->clause->literals[i]->var->status == implied_pos)
+          printf("(pos) ");
+        else if(resolved_head->clause->literals[i]->var->status == implied_neg)
+          printf("(neg) ");
+
+      }
+      printf("\n");
 
       Lit* new_implied = get_free_literal_from_clause(resolved_head->clause);
+      
       new_implied->level = lit->level;
+
       // set level
       // add the newly implied literal
       LitNode* lnode = (LitNode*)malloc(sizeof(LitNode));
@@ -698,8 +743,10 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
       lnode->lit->var->status = (lnode->lit->index>0) ? implied_pos:implied_neg;
       lnode->lit->reason = resolved_head->clause;
       sat_state->implied_literals = append(sat_state->implied_literals, lnode);
+                  printf("resolve lead to a new implied3\n");
+
     } 
-    printf("mark next clause\n");
+    // printf("mark next clause\n");
 
     resolved_head = resolved_head->next;
   }
@@ -709,17 +756,17 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
 }
 
 void unmark_a_literal(SatState* sat_state, Lit* lit) {
-  ClauseNode* subsumed_head = lit->clauses;
+  // ClauseNode* subsumed_head = lit->clauses;
   ClauseNode* resolved_head = flip_lit(lit)->clauses;
   // increament subsumed clauses
-  while (subsumed_head != NULL) {
-    subsumed_head->clause->subsuming_literal_count--;
-    subsumed_head->clause->free_literal_count++;
-    subsumed_head = subsumed_head->next;
-  }
+  // while (subsumed_head != NULL) {
+  //   subsumed_head->clause->subsuming_literal_count--;
+  //   // subsumed_head->clause->free_literal_count++;
+  //   subsumed_head = subsumed_head->next;
+  // }
   // resolved_head
   while (resolved_head != NULL) {
-    resolved_head->clause->free_literal_count++;
+    // resolved_head->clause->free_literal_count++;
     resolved_head = resolved_head->next;
   }
   lit->reason = NULL;
@@ -776,18 +823,15 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
       printf("advanching\n");
       tmp = tmp->next;
     }
-    printf("\nreturn true from unit resolution\n");
-
-    return true;
   } else if (sat_state->call_stat == learn_call) {
     printf("learning caused unit resolution\n");
 
     Clause* c = sat_state->cnf_tail->clause;
-    if (c->subsuming_literal_count != 0 && c->free_literal_count == 0){ // conflict
+    if (count_subsumed_lit(c) != 0 && count_free_lit(c) == 0){ // conflict
       sat_state->conflict_reason = c;
       return 0;
     }
-    else if (c->subsuming_literal_count != 0 && c->free_literal_count == 1) { // new imply
+    else if (count_subsumed_lit(c) && count_free_lit(c) == 1) { // new imply
       LitNode* tmp = sat_state->implied_literals;
       // tmp is now the tail;
       if (tmp != NULL) {
@@ -976,8 +1020,8 @@ void initialize_Var(Var* v) {
 void initialize_Clause(Clause * c) {
   c->literals = NULL;
   c->num_lits = 0;
-  c->subsuming_literal_count = 0;
-  c->free_literal_count = 0;
+  // c->subsuming_literal_count = 0;
+  // c->free_literal_count = 0;
   c->watch1 = NULL;
   c->watch2 = NULL;
 }
@@ -1156,6 +1200,71 @@ Clause* get_asserting_clause(SatState* sat_state) {
 }
 
 
+unsigned int count_free_lit(Clause* c) {
+  unsigned int count = 0;
+  for(unsigned i = 0; i<c->num_lits; i++) {
+    if(c->literals[i]->var->status == free_var) {
+      count++;
+    }
+  }
+  return count;
+}
+
+
+unsigned int count_subsumed_lit(Clause* c) {
+  unsigned int count = 0;
+  for(unsigned i = 0; i<c->num_lits; i++) {
+    if((c->literals[i]->var->status == implied_pos
+      && c->literals[i]->index>0) ||
+      (c->literals[i]->var->status == implied_neg
+      && c->literals[i]->index<0)) {
+      count++;
+    }
+  }
+  return count;
+}
+
+void print_clause(Clause* c) {
+    for (unsigned int i = 0; i < c->num_lits; i++) {
+      printf(" %d", c->literals[i]->index);
+      if(c->literals[i]->var->status == free_var)
+        printf("(free) ");
+      else if(c->literals[i]->var->status == implied_pos)
+        printf("(pos) ");
+      else if(c->literals[i]->var->status == implied_neg)
+        printf("(neg) ");
+    }
+    printf("\n");
+}
+
+void print_sat_state_clauses(SatState* sat_state) {
+  printf("\n\nPrinting all clauses...\n");
+  ClauseNode* cnf_ptr = sat_state->cnf_head;
+  while (cnf_ptr != NULL)
+  {
+      Clause* c = cnf_ptr->clause;
+      print_clause(c);
+      cnf_ptr = cnf_ptr->next;
+  }
+
+  printf("\n\nPrinting all decided...\n");
+  LitNode* n = sat_state->decided_literals;
+  while(n != NULL) {
+    printf(" %d ",n->lit->index);
+    n = n->next;
+  }
+  printf("\n");
+
+
+  printf("\n\nPrinting all implied...\n");
+  n = sat_state->implied_literals;
+  while(n != NULL) {
+    printf(" %d ",n->lit->index);
+    n = n->next;
+  }
+  printf("\n");
+
+}
 
 /******************************************************************************
 * end

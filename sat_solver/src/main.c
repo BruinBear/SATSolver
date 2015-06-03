@@ -24,12 +24,9 @@ Clause* sat_aux(SatState* sat_state) {
   Lit* lit = get_free_literal(sat_state);
   if(lit==NULL) return NULL; //all literals are implied
 
-  printf("returning null\n");
+  // printf("returning null\n");
 
-  Clause* learned = sat_decide_literal(lit,sat_state);
-  // guard
-  return NULL;
-  
+  Clause* learned = sat_decide_literal(lit,sat_state);  
   if(learned==NULL) learned = sat_aux(sat_state);
 
   sat_undo_decide_literal(sat_state);
@@ -74,7 +71,10 @@ int main(int argc, char* argv[]) {
   // }
   if(sat(sat_state)) printf("SAT\n");
   else printf("UNSAT\n");
-  sat_state_free(sat_state);
+  
+  print_sat_state_clauses(sat_state);
+
+  // sat_state_free(sat_state);
 
   return 0;
 }
