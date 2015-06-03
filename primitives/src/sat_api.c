@@ -112,7 +112,6 @@ BOOLEAN sat_implied_literal(const Lit* lit) {
 //if the current decision level is L in the beginning of the call, it should be updated 
 //to L+1 so that the decision level of lit and all other literals implied by unit resolution is L+1
 Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
-
   // Set the level of lit
   lit->level = (sat_state->decided_literals == NULL) ? 2 : (sat_state->decided_literals->lit->level + 1);
 
@@ -124,10 +123,10 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
     lit->var->status = implied_pos;
   else
     lit->var->status = implied_neg;
-
   // Add lit to head of decision literals list in sat_state
   LitNode* lnode = (LitNode*)malloc(sizeof(LitNode));
   initialize_LitNode(lnode);
+
   lnode->lit = lit;
   lnode->next = sat_state->decided_literals;
   sat_state->decided_literals = lnode;
@@ -136,6 +135,8 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
   // If succeed, return NULL
   // else return asserting clause
   sat_state->call_stat = decide_call;
+  
+  // test
   if (sat_unit_resolution(sat_state))
     return NULL;
   else
@@ -653,15 +654,19 @@ LitNode* append(LitNode* head, LitNode* n) {
 // return true if no conflict
 // else return false and assign a clause to conflict reason
 BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
+  printf("mark a literal called\n");
+  // return true;
+
   if (lit->index > 0) {
     lit->var->status = implied_pos;
   }
   else {
     lit->var->status = implied_neg;
   }
-
   ClauseNode* subsumed_head = lit->clauses;
   ClauseNode* resolved_head = flip_lit(lit)->clauses;
+  printf("mark subsumed clauses\n");
+
   // increament subsumed clauses
   while (subsumed_head != NULL) {
     subsumed_head->clause->subsuming_literal_count++;
@@ -670,14 +675,19 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
   }
   // resolve
   while (resolved_head != NULL) {
+    printf("mark resolved clauses\n");
+
     resolved_head->clause->free_literal_count--;
     if (resolved_head->clause->subsuming_literal_count == 0 &&
       resolved_head->clause->free_literal_count == 0) {//conflict
+        printf("resolve lead to a conflict\n");
       sat_state->conflict_reason = resolved_head->clause;
       return false;
     }
     else if (resolved_head->clause->subsuming_literal_count == 0 &&
       resolved_head->clause->free_literal_count == 1){
+      printf("resolve lead to a new implied\n");
+
       Lit* new_implied = get_free_literal_from_clause(resolved_head->clause);
       new_implied->level = lit->level;
       // set level
@@ -685,10 +695,16 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
       LitNode* lnode = (LitNode*)malloc(sizeof(LitNode));
       initialize_LitNode(lnode);
       lnode->lit = new_implied;
+      lnode->lit->var->status = (lnode->lit->index>0) ? implied_pos:implied_neg;
+      lnode->lit->reason = resolved_head->clause;
       sat_state->implied_literals = append(sat_state->implied_literals, lnode);
-    }
+    } 
+    printf("mark next clause\n");
+
     resolved_head = resolved_head->next;
   }
+  printf("return true from mark_a_literal\n");
+
   return true;
 }
 
@@ -701,17 +717,20 @@ void unmark_a_literal(SatState* sat_state, Lit* lit) {
     subsumed_head->clause->free_literal_count++;
     subsumed_head = subsumed_head->next;
   }
-  // resolve
+  // resolved_head
   while (resolved_head != NULL) {
     resolved_head->clause->free_literal_count++;
     resolved_head = resolved_head->next;
   }
+  lit->reason = NULL;
+  lit->var->status = free_var;
 }
 
 //applies unit resolution to the cnf of sat state
 //returns 1 if unit resolution succeeds, 0 if it finds a contradiction
 BOOLEAN sat_unit_resolution(SatState* sat_state) {
   if (sat_state->call_stat == first_call) {
+    printf("first call cause unit resolution");
     LitNode* tmp = sat_state->implied_literals;
     while (tmp != NULL) {
       if (!mark_a_literal(sat_state, tmp->lit)) {
@@ -721,28 +740,47 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
     }
   }
   else if (sat_state->call_stat == decide_call) { // mark on a decision
+    printf("decided call cause unit resolution");
     LitNode* tmp = sat_state->implied_literals;
+
     if (tmp != NULL) {
       while (tmp->next != NULL)
         tmp = tmp->next;
     }
-    if (mark_a_literal(sat_state, sat_state->decided_literals->lit))
-      return 0;
+
+    // bug
+    printf("\n#####\nJINGYU number %d\n", sat_state->decided_literals->lit->index);
+    if (!mark_a_literal(sat_state, sat_state->decided_literals->lit)) { 
+      printf("\n#####\nreturning false\n");
+      return false;
+    }
+    printf("\n#####\nafter mark a literal\n");
+
+
     // if originally no implied
     if (tmp == NULL) {
+      printf("\n#####\nno implied originally\n");
       tmp = sat_state->implied_literals;
-    }
-    else {
+    } else {
+      printf("\n#####\nmove on by one to new implied\n");
+
       tmp = tmp->next;
     }
+
+    printf("\n#####\nmark the new implied\n");
     while (tmp != NULL) {
+      printf("\n#####\nmarking\n");
       if (!mark_a_literal(sat_state, tmp->lit)) {
         return 0;
       }
+      printf("advanching\n");
       tmp = tmp->next;
     }
-  }
-  else if (sat_state->call_stat == learn_call) {
+    printf("\nreturn true from unit resolution\n");
+
+    return true;
+  } else if (sat_state->call_stat == learn_call) {
+    printf("learning caused unit resolution\n");
 
     Clause* c = sat_state->cnf_tail->clause;
     if (c->subsuming_literal_count != 0 && c->free_literal_count == 0){ // conflict
@@ -779,6 +817,7 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 //undoes sat_unit_resolution(), leading to un-instantiating variables that have been instantiated
 //after sat_unit_resolution()
 void sat_undo_unit_resolution(SatState* sat_state) {
+  return;
   unsigned long level = sat_state->assertion_level;
   LitNode* decided = sat_state->decided_literals;
   LitNode* implied = sat_state->implied_literals;
@@ -1041,6 +1080,7 @@ Clause* get_asserting_clause(SatState* sat_state) {
   Clause* conflict_reason = sat_state->conflict_reason;
   unsigned long last_level = get_last_level(conflict_reason);
   // initialize from conflict
+
   for (unsigned long i = 0; i < conflict_reason->num_lits; i++) {
     LitNode* node = &((LitNode) { NULL, flip_lit(conflict_reason->literals[i]) });
     if (conflict_reason->literals[i]->level == last_level) { // last level node added to queue
@@ -1111,6 +1151,7 @@ Clause* get_asserting_clause(SatState* sat_state) {
       }
     }
   }
+
   return make_clause_from_lit(q_head, l_head);
 }
 

@@ -24,8 +24,14 @@ Clause* sat_aux(SatState* sat_state) {
   Lit* lit = get_free_literal(sat_state);
   if(lit==NULL) return NULL; //all literals are implied
 
+  printf("returning null\n");
+
   Clause* learned = sat_decide_literal(lit,sat_state);
+  // guard
+  return NULL;
+  
   if(learned==NULL) learned = sat_aux(sat_state);
+
   sat_undo_decide_literal(sat_state);
 
   if(learned!=NULL) { //there is a conflict
@@ -58,6 +64,14 @@ int main(int argc, char* argv[]) {
 	
   //construct a sat state and then check satisfiability
   SatState* sat_state = sat_state_new(cnf_fname);
+  //testing
+  // if(sat_unit_resolution(sat_state)) {
+  //   printf("#####\nJINGYU: SAT\n");
+  // }
+
+  // if((sat_aux(sat_state)==NULL? 1: 0)) {
+  //   printf("#####\nJINGYU: SATTT\n");
+  // }
   if(sat(sat_state)) printf("SAT\n");
   else printf("UNSAT\n");
   sat_state_free(sat_state);
