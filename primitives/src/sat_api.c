@@ -902,45 +902,41 @@ void sat_undo_unit_resolution(SatState* sat_state) {
 //it is used to decide whether the sat state is at the right decision level for adding clause.
 BOOLEAN sat_at_assertion_level(const Clause* clause, const SatState* sat_state) {
 
-  // Assume clause isn't NULL and has more than 0 literal
-  assert(clause != NULL && clause->num_lits > 0);
+	// Assume clause isn't NULL and has more than 0 literal
+	assert(clause != NULL && clause->num_lits > 0);
 
-  c2dSize decision_level;
-  if (sat_state->decided_literals == NULL)
-    decision_level = 1;
-  else
-    decision_level = sat_state->decided_literals->lit->var->level;
+	printf("\nTHe clause asserting level is working on \n");
+	print_clause(clause);
 
-  if (clause->num_lits == 1)
-    return (1 == decision_level);
+	c2dSize decision_level;
+	if (sat_state->decided_literals == NULL)
+		decision_level = 1;
+	else
+		decision_level = sat_state->decided_literals->lit->var->level;
 
-  c2dSize assertion_level = (clause->literals[0]->var->level);
-  c2dSize highest_level = (clause->literals[0]->var->level);
+	if (clause->num_lits == 1)
+		return (1 == decision_level);
 
-  if (clause->literals[0]->var->level > clause->literals[1]->var->level)
-    assertion_level = clause->literals[1]->var->level;
-  else
-    highest_level = clause->literals[1]->var->level;
+	c2dSize assertion_level = 1;
+	c2dSize highest_level = 1;
 
-  printf("\nTHe clause asserting level is working on \n");
-  print_clause(clause);
-  print_sat_state_clauses(sat_state);
-  for (unsigned int i = 2; i < clause->num_lits; i++)
-  {
-    if (clause->literals[i]->var->level > highest_level)
-    {
-      assertion_level = highest_level;
-      highest_level = clause->literals[i]->var->level;
-    }
-    else if (clause->literals[i]->var->level > assertion_level)
-    {
-      assertion_level = clause->literals[i]->var->level;
-    }
-  }
+	// Get highest level
+	for (unsigned int i = 0; i < clause->num_lits; i++)
+	{
+		if ((clause->literals[i]->var->level)>highest_level)
+			highest_level = (clause->literals[i]->var->level);
+	}
+	
+	// Get assertion_level
+	for (unsigned int i = 0; i < clause->num_lits; i++)
+	{
+		if (((clause->literals[i]->var->level)>assertion_level)
+			&& ((clause->literals[i]->var->level) != highest_level))
+			assertion_level = (clause->literals[i]->var->level);
+	}
 
-  printf("\nAssertion Level is: %d\n", assertion_level);
-  abort();
-  return decision_level == assertion_level;
+	printf("\nAssertion Level is: %d\n", assertion_level);
+	return decision_level == assertion_level;
 }
 
 /******************************************************************************
