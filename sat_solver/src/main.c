@@ -22,6 +22,11 @@ Lit* get_free_literal(SatState* sat_state) {
 //otherwise, a clause must be learned and it is returned
 Clause* sat_aux(SatState* sat_state) {
   Lit* lit = get_free_literal(sat_state);
+  if(lit != NULL)
+    printf("\nget free literal\n");
+  else
+    printf("\nno free literal\n");
+  
   if(lit==NULL) return NULL; //all literals are implied
 
   // printf("returning null\n");
@@ -29,7 +34,15 @@ Clause* sat_aux(SatState* sat_state) {
   Clause* learned = sat_decide_literal(lit,sat_state);  
   if(learned==NULL) learned = sat_aux(sat_state);
 
+  printf("**********print before undo\n");
+print_sat_state_clauses(sat_state);
   sat_undo_decide_literal(sat_state);
+print_sat_state_clauses(sat_state);
+ 
+  printf("**********print after undo\n");
+
+
+    printf("\nknock knock\n");
 
   if(learned!=NULL) { //there is a conflict
     if(sat_at_assertion_level(learned,sat_state)) {

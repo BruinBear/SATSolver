@@ -114,7 +114,7 @@ BOOLEAN sat_implied_literal(const Lit* lit) {
 Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
   // Set the level of lit
   printf("\n***decide literal %d\n",lit->index);
-  lit->level = (sat_state->decided_literals == NULL) ? 2 : (sat_state->decided_literals->lit->level + 1);
+  lit->var->level = (sat_state->decided_literals == NULL) ? 2 : (sat_state->decided_literals->lit->var->level + 1);
 
   // Set reason to be NULL, since it's decided!
   lit->reason = NULL;
@@ -143,7 +143,7 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
   }
   else {
     printf("Asserting clause learned\n");
-    Clause* c =     get_asserting_clause(sat_state);
+    Clause* c = get_asserting_clause(sat_state);
     print_clause(c);
     return c;
   }
@@ -159,12 +159,12 @@ void sat_undo_decide_literal(SatState* sat_state) {
     return;
 
   LitNode* last_decision = sat_state->decided_literals;
-  c2dSize last_level = last_decision->lit->level;
+  c2dSize last_level = last_decision->lit->var->level;
 
   // Unmark the last decision, set var status to free, and set level of literal to 1
   unmark_a_literal(sat_state, last_decision->lit);
   last_decision->lit->var->status = free_var;
-  last_decision->lit->level = 1;
+  last_decision->lit->var->level = 1;
 
   // delete node from list
   sat_state->decided_literals = sat_state->decided_literals->next;
@@ -173,37 +173,39 @@ void sat_undo_decide_literal(SatState* sat_state) {
   // For each implied literal at the last decision level, unmark it, set var status to free, and set level of literal to 1
   // and remove node from list
   LitNode* lnode = sat_state->implied_literals;
-  // LitNode* prev = NULL;
-  // while(lnode!=NULL) {
-  //   if (lnode->lit->level == last_level) {
-  //     if(prev = NULL) {
-  //       sat_state->implied_literals = NULL;
-  //     } else {
-  //       prev->next = NULL;
-  //     }
-  //   }
-  //   prev = lnode;
-  //   lnode = lnode->next;
-  // }
-  LitNode* lnode_next = lnode;
-
-  while (lnode_next != NULL)
-  {
-    lnode_next = lnode_next->next;
-    if (lnode->lit->level == last_level)
-    {
-
-      unmark_a_literal(sat_state, lnode->lit);
-      lnode->lit->var->status = free_var;
-      lnode->lit->level = 1;
-
-      free(lnode);
-
+  LitNode* prev = NULL;
+  printf("captain\n");
+  while(lnode!=NULL) {
+    if (lnode->lit->var->level == last_level) {
+      if(prev == NULL) {
+        sat_state->implied_literals = NULL;
+        LitNode* to_free = lnode;
+        while(to_free != NULL) {
+          unmark_a_literal(sat_state, to_free->lit);
+          to_free->lit->var->status = free_var;
+          to_free->lit->var->level = 1;
+          LitNode* hold = to_free->next;
+          free(to_free);
+          to_free = hold;
+        }
+        break;
+      } else {
+        LitNode* to_free = lnode;
+        while(to_free != NULL) {
+          unmark_a_literal(sat_state, to_free->lit);
+          to_free->lit->var->status = free_var;
+          to_free->lit->var->level = 1;         
+          LitNode* hold = to_free->next;
+          free(to_free);
+          to_free = hold;
+        }
+        prev->next = NULL;
+        break;
+      }
     }
-    lnode = lnode_next;
+    prev = lnode;
+    lnode = lnode->next;
   }
-
-
   return; //dummy valued
 }
 /******************************************************************************
@@ -266,6 +268,17 @@ c2dSize sat_learned_clause_count(const SatState* sat_state) {
 Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
   // Assume clause isn't empty
   assert(clause != NULL);
+
+  // Add assert clause to lit related clauses
+  for(unsigned int i = 0; i < clause->num_lits; i++) {
+    ClauseNode* new_node = (ClauseNode*)malloc(sizeof(ClauseNode));
+    initialize_ClauseNode(new_node);
+    new_node->clause = clause;
+
+    Lit* l = clause->literals[i];
+    new_node->next = l->clauses;
+    l->clauses = new_node;
+  }
 
   // Set the clause index
   if (sat_state->cnf_tail != NULL)
@@ -715,7 +728,6 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
     }
     else if (count_subsumed_lit(resolved_head->clause) == 0 &&
       count_free_lit(resolved_head->clause) == 1){
-      printf("    resolve lead to a new implied\n");
       printf("    free count: %d\nsubsumed count: %d\n", count_free_lit(resolved_head->clause), count_subsumed_lit(resolved_head->clause));
       printf("    print clause\n");
 
@@ -732,8 +744,9 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
       printf("\n");
 
       Lit* new_implied = get_free_literal_from_clause(resolved_head->clause);
-      
-      new_implied->level = lit->level;
+      printf("    resolve lead to a new implied literal : %d\n", new_implied->index);
+
+      new_implied->var->level = lit->var->level;
 
       // set level
       // add the newly implied literal
@@ -743,8 +756,6 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
       lnode->lit->var->status = (lnode->lit->index>0) ? implied_pos:implied_neg;
       lnode->lit->reason = resolved_head->clause;
       sat_state->implied_literals = append(sat_state->implied_literals, lnode);
-                  printf("resolve lead to a new implied3\n");
-
     } 
     // printf("mark next clause\n");
 
@@ -810,19 +821,21 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
       tmp = sat_state->implied_literals;
     } else {
       printf("\n#####\nmove on by one to new implied\n");
-
       tmp = tmp->next;
     }
+    print_sat_state_clauses(sat_state);
 
-    printf("\n#####\nmark the new implied\n");
+    printf("\n#####\ndid i get here\n");
+
     while (tmp != NULL) {
-      printf("\n#####\nmarking\n");
+      printf("\n#####\nmark the new implied\n");
       if (!mark_a_literal(sat_state, tmp->lit)) {
         return 0;
       }
       printf("advanching\n");
       tmp = tmp->next;
     }
+    return 1;
   } else if (sat_state->call_stat == learn_call) {
     printf("learning caused unit resolution\n");
 
@@ -865,10 +878,10 @@ void sat_undo_unit_resolution(SatState* sat_state) {
   unsigned long level = sat_state->assertion_level;
   LitNode* decided = sat_state->decided_literals;
   LitNode* implied = sat_state->implied_literals;
-  while (decided != NULL && decided->lit->level <= level) {
+  while (decided != NULL && decided->lit->var->level <= level) {
     decided = decided->next;
   }
-  while (implied != NULL && implied->lit->level <= level) {
+  while (implied != NULL && implied->lit->var->level <= level) {
     implied = implied->next;
   }
   while (decided != NULL) {
@@ -889,40 +902,44 @@ void sat_undo_unit_resolution(SatState* sat_state) {
 //it is used to decide whether the sat state is at the right decision level for adding clause.
 BOOLEAN sat_at_assertion_level(const Clause* clause, const SatState* sat_state) {
 
-  // Assume clause isn't NULL and has more than 1 literal
+  // Assume clause isn't NULL and has more than 0 literal
   assert(clause != NULL && clause->num_lits > 0);
 
   c2dSize decision_level;
   if (sat_state->decided_literals == NULL)
     decision_level = 1;
   else
-    decision_level = sat_state->decided_literals->lit->level;
+    decision_level = sat_state->decided_literals->lit->var->level;
 
   if (clause->num_lits == 1)
     return (1 == decision_level);
 
-  c2dSize assertion_level = (clause->literals[0]->level);
-  c2dSize highest_level = (clause->literals[0]->level);
+  c2dSize assertion_level = (clause->literals[0]->var->level);
+  c2dSize highest_level = (clause->literals[0]->var->level);
 
-  if (clause->literals[0]->level > clause->literals[1]->level)
-    assertion_level = clause->literals[1]->level;
+  if (clause->literals[0]->var->level > clause->literals[1]->var->level)
+    assertion_level = clause->literals[1]->var->level;
   else
-    highest_level = clause->literals[1]->level;
+    highest_level = clause->literals[1]->var->level;
 
-
+  printf("\nTHe clause asserting level is working on \n");
+  print_clause(clause);
+  print_sat_state_clauses(sat_state);
   for (unsigned int i = 2; i < clause->num_lits; i++)
   {
-    if (clause->literals[i]->level > highest_level)
+    if (clause->literals[i]->var->level > highest_level)
     {
       assertion_level = highest_level;
-      highest_level = clause->literals[i]->level;
+      highest_level = clause->literals[i]->var->level;
     }
-    else if (clause->literals[i]->level > assertion_level)
+    else if (clause->literals[i]->var->level > assertion_level)
     {
-      assertion_level = clause->literals[i]->level;
+      assertion_level = clause->literals[i]->var->level;
     }
   }
 
+  printf("\nAssertion Level is: %d\n", assertion_level);
+  abort();
   return decision_level == assertion_level;
 }
 
@@ -969,7 +986,6 @@ void sat_unmark_clause(Clause* clause) {
 ******************************************************************************/
 void initialize_Lit(Lit* l) {
   l->index = 1;
-  l->level = 1;
   l->clauses = NULL;
   l->clauses_tail = NULL;
   l->var = NULL;
@@ -1014,6 +1030,7 @@ void initialize_Var(Var* v) {
   v->status = free_var;
   v->num_clause_has = 0;
   v->state = NULL;
+  v->level = 1;
   initialize_ClausePtrVector(&v->original_cnf_array);
 }
 
@@ -1085,29 +1102,28 @@ BOOLEAN is_lit_duplicate(LitNode* head, Lit* lit) {
 unsigned long get_last_level(Clause* reason) {
   unsigned long last_level = 0;
   for (unsigned long i = 0; i < reason->num_lits; i++) {
-    if (reason->literals[i]->level > last_level) {
-      last_level = reason->literals[i]->level;
+    if (reason->literals[i]->var->level >  last_level) {
+      last_level = reason->literals[i]->var->level;
     }
   }
   return last_level;
 }
 
-Clause* make_clause_from_lit(LitNode* a, LitNode* b) {
+Clause* make_clause_from_lit(LitNode* head) {
   Clause* clause = (Clause *)malloc(sizeof(Clause));
   initialize_Clause(clause);
-  unsigned int i = 1;
-  LitNode* tmp = b;
+  unsigned int i = 0;
+  LitNode* tmp = head;
   while (tmp != NULL) {
     i++;
     tmp = tmp->next;
   }
   clause->num_lits = i;
   clause->literals = (Lit **)malloc(clause->num_lits*sizeof(Lit*));
-  clause->literals[0] = a->lit;
-  i = 1;
-  tmp = b;
-  while (b != NULL) {
-    clause->literals[i] = tmp->lit;
+  i = 0;
+  tmp = head;
+  while (tmp != NULL) {
+    clause->literals[i] = flip_lit(tmp->lit);
     tmp = tmp->next;
     i++;
   }
@@ -1116,87 +1132,133 @@ Clause* make_clause_from_lit(LitNode* a, LitNode* b) {
 
 
 Clause* get_asserting_clause(SatState* sat_state) {
-
+  print_sat_state_clauses(sat_state);
   LitNode* q_head = NULL; // Note this has been used w/o being initilized
-  LitNode* q_tail = NULL; // Note this has been used w/o being initilized
+  // LitNode* q_tail = NULL; // Note this has been used w/o being initilized
   LitNode* l_head = NULL; // Note this has been used w/o being initilized
-  LitNode* l_tail = NULL; // Note this has been used w/o being initilized
+  // LitNode* l_tail = NULL; // Note this has been used w/o being initilized
   Clause* conflict_reason = sat_state->conflict_reason;
   unsigned long last_level = get_last_level(conflict_reason);
   // initialize from conflict
+  printf("conflict reason:\n");
+  print_clause(conflict_reason);
+  printf("get asserting clause from level %d\n", last_level);
 
   for (unsigned long i = 0; i < conflict_reason->num_lits; i++) {
-    LitNode* node = &((LitNode) { NULL, flip_lit(conflict_reason->literals[i]) });
-    if (conflict_reason->literals[i]->level == last_level) { // last level node added to queue
+    printf("%d\n", i);
+
+    LitNode* node = (LitNode*)malloc(sizeof(LitNode));
+    initialize_LitNode(node);
+    node->lit = flip_lit(conflict_reason->literals[i]);
+    printf("literal index: %d\n", node->lit->index);
+    if (conflict_reason->literals[i]->var->level == last_level) { // last level node added to queue
       if (!is_lit_duplicate(q_head, node->lit)) {
-        q_tail = append_node_LitNode(q_tail, node);
-        if (q_head == NULL) {
-          q_head = q_tail;
+        if(q_head == NULL) {
+          q_head = node;
+        } else {
+          q_head = append(q_head, node);
+        }
+        LitNode* tmp = q_head;
+        while(tmp!=NULL) {
+          printf("tmp has: %d\n", tmp->lit->index);
+          tmp = tmp->next;
         }
       }
     }
     else {
       if (!is_lit_duplicate(l_head, node->lit)) { // not last level node added to list
-        l_tail = append_node_LitNode(l_tail, node);
-        if (l_head == NULL) {
-          l_head = l_tail;
+        if(l_head == NULL) {
+          l_head = node;
+        } else {
+          l_head = append(l_head, node);
         }
       }
     }
+    printf("end %d\n", i);
   }
+  
 
   // Constructing queue and list
   // If more than one literal at last level
   while (q_head->next != NULL) {
     Lit* head_lit = q_head->lit;
+    LitNode* tmp = l_head;
+        while(tmp!=NULL) {
+          printf("l_queue has: %d\n", tmp->lit->index);
+          tmp = tmp->next;
+        }
 
-    BOOLEAN is_implied;
-    if (head_lit->index > 0)
-      is_implied = (head_lit->var->status == implied_pos);
-    else
-      is_implied = (head_lit->var->status == implied_neg);
-    if (head_lit->reason == NULL && is_implied) {
+        tmp = q_head;
+                while(tmp!=NULL) {
+                  printf("q_queue has: %d\n", tmp->lit->index);
+                  tmp = tmp->next;
+        }
+    if (head_lit->reason == NULL) {
       // if duplicate just truncate head
+      printf("found decided %d\n", head_lit->index);
+
       if (is_lit_duplicate(q_head->next, q_head->lit)) {
         q_head = q_head->next;
+      } else {
+
+        // move the head to tail
+        LitNode* tmp_node = q_head;
+        q_head = q_head->next;
+        tmp_node->next = NULL;
+        q_head = append(q_head, tmp_node);
+        printf("move decided %d to Q end\n", tmp_node->lit->index);
       }
-      // move the head to tail
-      LitNode* tmp_node = q_head;
-      q_head = q_head->next;
-      tmp_node->next = NULL;
-      q_tail = append_node_LitNode(tmp_node, q_tail);
-    }
-    else { // implied
+    } else { // implied
       // advance head
-      q_head = q_head->next;
+      printf("found implied %d\n", head_lit->index);
+      if(head_lit->reason == NULL) {
+        printf("reason is null\n");
+      }
       // add literals in the reason to last_level queue and literal list
       Clause* reason = head_lit->reason;
       for (unsigned long i = 0; i < reason->num_lits; i++) {
-        if(flip_lit(q_head->lit) == reason->literals[i]) {
+        if(head_lit == reason->literals[i]) {
           continue;
         }
-        LitNode* node = &((LitNode) { NULL, flip_lit(reason->literals[i]) });
-        if (reason->literals[i]->level == last_level) { // last level node added to queue
+        printf("DId I die here0\n");
+        LitNode* node = (LitNode*)malloc(sizeof(LitNode));
+        initialize_LitNode(node);
+        node->lit = flip_lit(reason->literals[i]);
+        printf("DId I die here1\n");
+        if (reason->literals[i]->var->level == last_level) { // last level node added to queue
           if (!is_lit_duplicate(q_head, node->lit)) {
-            q_tail = append_node_LitNode(q_tail, node);
-            if (q_head == NULL) {
-              q_head = q_tail;
-            }
+            q_head = append(q_head, node);
           }
         }
         else {
           if (!is_lit_duplicate(l_head, node->lit)) { // not last level node added to list
-            l_tail = append_node_LitNode(l_tail, node);
-            if (l_head == NULL) {
-              l_head = l_tail;
-            }
+            l_head = append(l_head, node);
           }
         }
       }
+      printf("DId I die here2\n");
+      q_head = q_head->next;
     }
+    printf("DId I die here3\n");
   }
+  printf("DId I die here4\n");
+   LitNode* tmp = l_head;
+        while(tmp!=NULL) {
+          printf("l_queue has: %d\n", tmp->lit->index);
+          tmp = tmp->next;
+        }
 
-  return make_clause_from_lit(q_head, l_head);
+        tmp = q_head;
+                while(tmp!=NULL) {
+                  printf("q_queue has: %d\n", tmp->lit->index);
+                  tmp = tmp->next;
+        }  
+        q_head->next = l_head;
+        Clause* c = make_clause_from_lit(q_head);
+  printf("DId I die here5\n");
+  printf("Print learned clause\n");
+  print_clause(c);
+  return c;
 }
 
 
@@ -1226,7 +1288,7 @@ unsigned int count_subsumed_lit(Clause* c) {
 
 void print_clause(Clause* c) {
     for (unsigned int i = 0; i < c->num_lits; i++) {
-      printf(" %d", c->literals[i]->index);
+    printf(" %d<%d>",c->literals[i]->index, c->literals[i]->var->level);
       if(c->literals[i]->var->status == free_var)
         printf("(free) ");
       else if(c->literals[i]->var->status == implied_pos)
@@ -1250,7 +1312,7 @@ void print_sat_state_clauses(SatState* sat_state) {
   printf("\n\nPrinting all decided...\n");
   LitNode* n = sat_state->decided_literals;
   while(n != NULL) {
-    printf(" %d ",n->lit->index);
+    printf(" %d<%d>",n->lit->index, n->lit->var->level);
     n = n->next;
   }
   printf("\n");
@@ -1259,7 +1321,7 @@ void print_sat_state_clauses(SatState* sat_state) {
   printf("\n\nPrinting all implied...\n");
   n = sat_state->implied_literals;
   while(n != NULL) {
-    printf(" %d ",n->lit->index);
+    printf(" %d<%d>",n->lit->index, n->lit->var->level);
     n = n->next;
   }
   printf("\n");

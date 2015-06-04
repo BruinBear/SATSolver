@@ -87,7 +87,6 @@ typedef struct ClausePtrVector ClausePtrVector;
 
 struct literal {
   c2dLiteral index;
-  unsigned long level;
   ClauseNode* clauses;
   ClauseNode* clauses_tail;
   Var* var;
@@ -122,6 +121,8 @@ struct ClausePtrVector
 struct var {
 
   c2dSize index;
+
+  c2dSize level;
 
   Lit* pos_lit;
   Lit* neg_lit;
