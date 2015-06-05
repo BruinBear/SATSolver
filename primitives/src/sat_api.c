@@ -153,7 +153,7 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
 //if the current decision level is L in the beginning of the call, it should be updated 
 //to L-1 before the call ends
 void sat_undo_decide_literal(SatState* sat_state) {
-	assert(sat_state != NULL);
+	//assert(sat_state != NULL);
 	if (sat_state->decided_literals == NULL)
 		return;
 
@@ -270,7 +270,7 @@ c2dSize sat_learned_clause_count(const SatState* sat_state) {
 Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
 	// Assume clause isn't empty
 	assert(clause != NULL);
-
+	//printf("Assert");
 	// Add assert clause to lit related clauses
 	for (unsigned int i = 0; i < clause->num_lits; i++) {
 		ClauseNode* new_node = (ClauseNode*)malloc(sizeof(ClauseNode));
@@ -356,6 +356,8 @@ SatState* sat_state_new(const char* cnf_fname)
 			token = strtok(NULL, " \n\r");
 			state->num_vars = atoi(strtok(NULL, " \n\r"));
 			state->num_orig_clauses = atoi(strtok(NULL, " \n\r"));
+			//printf("Num vars = %d\n", state->num_vars);
+			//printf("Num original cnf clauses = %d\n", state->num_orig_clauses);
 			state->vars = (Var *)malloc((state->num_vars) * sizeof(Var));
 			int num_vars = state->num_vars;
 			Var* vars = state->vars;
@@ -377,29 +379,32 @@ SatState* sat_state_new(const char* cnf_fname)
 		Clause* clause = (Clause *)malloc(sizeof(Clause));
 		initialize_Clause(clause);
 
-		// Walk through it once first to count number of literals in clause
-		// By counting the number of spaces in the line
+		//// Walk through it once first to count number of literals in clause
+		//// By counting the number of spaces in the line
 
-		int num_lits = 0;
-		for (int i = 0; line[i] != '\0'; i++)
-		{
-			if (line[i] == ' ')
-				num_lits++;
-		}
+		//int num_lits = 0;
+		//for (int i = 0; line[i] != '\0'; i++)
+		//{
+		//	if (line[i] == ' ')
+		//		num_lits++;
+		//}
 
-		if (num_lits == 0)
-		{
-			free(clause);
-			continue;
-		}
+		//if (num_lits == 0)
+		//{
+		//	free(clause);
+		//	continue;
+		//}
+		//printf(" %d ", num_lits);
 
-		// Walk through it again to point to the literals
-		clause->num_lits = num_lits;
-		clause->literals = (Lit **)malloc(num_lits*sizeof(Lit*));
+		//// Walk through it again to point to the literals
+		//clause->num_lits = num_lits;
+		//clause->literals = (Lit **)malloc(num_lits*sizeof(Lit*));
+		
 		int i = 0;
+		LitPtrVector lpv;
+		initialize_LitPtrVector(&lpv);
 
-		char* token = strtok(line, " ");
-
+		char* token = strtok(line, " \r\n");
 		while (token != NULL)
 		{
 			if (token[0] == '0')
@@ -413,8 +418,8 @@ SatState* sat_state_new(const char* cnf_fname)
 			else
 				lit = state->vars[(-1 * lit_index) - 1].neg_lit;
 
-			// Put into clause
-			clause->literals[i] = lit;
+			// Put into lit ptr vector
+			add_LitPtrVector(&lpv, lit);
 
 			// Put this clause to the vector of the variable
 			add(&(lit->var->original_cnf_array), clause);
@@ -428,9 +433,17 @@ SatState* sat_state_new(const char* cnf_fname)
 				lit->clauses = cnode;
 			lit->clauses_tail = append_node_ClauseNode(cnode, lit->clauses_tail);
 
+
 			token = strtok(NULL, " ");
 			i++;
+
 		}
+		if (i == 0)
+			continue;
+		clause->num_lits = lpv.current;
+		//printf("%d ", clause->num_lits);
+		clause->literals = lpv.lits;
+
 		// for (int i = 0; i < num_lits; i++)
 		// {
 		// 	printf(" %d ", clause->literals[i]->index);
@@ -438,7 +451,7 @@ SatState* sat_state_new(const char* cnf_fname)
 
 		// Special case: if num_lits = 1, then unit clause. 
 		// Add this to the implied literal list
-		if (num_lits == 1)
+		if (i == 1)
 		{
 			Lit * unit_lit = clause->literals[0];
 			// Set the variable to be implied as pos/neg
@@ -469,13 +482,12 @@ SatState* sat_state_new(const char* cnf_fname)
 			//Put into a LitNode and put into list of implied literals
 			LitNode* imp_lit_node = (LitNode*)malloc(sizeof(LitNode));
 			initialize_LitNode(imp_lit_node);
-			get_ticket_number(unit_lit->var,state);
+			get_ticket_number(unit_lit->var, state);
 			imp_lit_node->lit = unit_lit;
 			imp_lit_node->next = state->implied_literals;
 			state->implied_literals = imp_lit_node;
 
 		}
-
 		// put the clause into the cnf list
 
 		ClauseNode* clause_node = (ClauseNode *)malloc(sizeof(ClauseNode));
@@ -489,9 +501,10 @@ SatState* sat_state_new(const char* cnf_fname)
 			(state->cnf_tail)->next = clause_node;
 		}
 		state->cnf_tail = clause_node;
+		//printf("DID I GET HERE?");
 
 	}
-
+	//printf("DID I FINISH MAKING SATSTATE");
 	return state;
 }
 
@@ -677,6 +690,12 @@ void unmark_a_literal(SatState* sat_state, Lit* lit) {
 //applies unit resolution to the cnf of sat state
 //returns 1 if unit resolution succeeds, 0 if it finds a contradiction
 BOOLEAN sat_unit_resolution(SatState* sat_state) {
+	if (sat_state == NULL)
+	{
+		//printf("SatState null at sat_unit_res!");
+		//getc(stdin);
+		exit(1);
+	}
 	if (sat_state->call_stat == first_call) {
 		LitNode* tmp = sat_state->implied_literals;
 		while (tmp != NULL) {
@@ -753,11 +772,11 @@ void sat_undo_unit_resolution(SatState* sat_state) {
 	LitNode* decided = sat_state->decided_literals;
 	LitNode* implied = sat_state->implied_literals;
 	while (decided != NULL) {
-    decided->lit->var->status=free_var;
+		decided->lit->var->status = free_var;
 		decided = decided->next;
 	}
 	while (implied != NULL) {
-    implied->lit->var->status=free_var;
+		implied->lit->var->status = free_var;
 		implied = implied->next;
 	}
 	return;
@@ -790,7 +809,7 @@ BOOLEAN sat_at_assertion_level(const Clause* clause, const SatState* sat_state) 
 		if ((clause->literals[i]->var->level)>highest_level)
 			highest_level = (clause->literals[i]->var->level);
 	}
-	
+
 	// Get assertion_level
 	for (unsigned int i = 0; i < clause->num_lits; i++)
 	{
@@ -887,10 +906,39 @@ void add(ClausePtrVector* cv, Clause* c)
 }
 
 
+void add_LitPtrVector(LitPtrVector* lv, Lit* l)
+{
+	if (lv->lits == NULL)
+	{
+		lv->lits = (Lit**)malloc(lv->limit*sizeof(Lit*));
+	}
+	else if (lv->current == lv->limit)
+	{
+		lv->limit *= 2;
+		lv->lits = (Lit**)realloc(lv->lits, lv->limit*sizeof(Lit*));
+		if (lv->lits == NULL)
+		{
+			//printf("Not able to add more literal ptrs to this vector!!!\n");
+			//getc(stdin);
+			exit(1);
+		}
+
+	}
+	lv->lits[lv->current] = l;
+	lv->current++;
+}
+
+
 void initialize_ClausePtrVector(ClausePtrVector* c) {
 	c->clause = NULL;
 	c->limit = 5;
 	c->current = 0;
+}
+
+void initialize_LitPtrVector(LitPtrVector* l) {
+	l->lits = NULL;
+	l->limit = 3;
+	l->current = 0;
 }
 
 void initialize_Var(Var* v) {
@@ -1139,6 +1187,12 @@ unsigned int count_free_lit(Clause* c) {
 
 
 unsigned int count_subsumed_lit(Clause* c) {
+	if (c == NULL)
+	{
+		//printf("Called count_subsumed_lit with NULL clause\n");
+		//getc(stdin);
+		exit(1);
+	}
 	unsigned int count = 0;
 	for (unsigned i = 0; i<c->num_lits; i++) {
 		if ((c->literals[i]->var->status == implied_pos
@@ -1192,6 +1246,34 @@ void print_sat_state_clauses(SatState* sat_state) {
 	printf("\n");
 
 }
+
+BOOLEAN assignment_is_sat(SatState* sat_state)
+{
+	ClauseNode* cnf_ptr = sat_state->cnf_head;
+	while (cnf_ptr != NULL)
+	{
+		Lit** l = cnf_ptr->clause->literals;
+		BOOLEAN clause_subsumed = false;
+		for (unsigned int i = 0; i < cnf_ptr->clause->num_lits; i++)
+		{
+			if (l[i]->var->status == free_var)
+			{
+				return false;
+			}
+			if ((l[i]->var->status == implied_neg && l[i]->index < 0)
+				|| (l[i]->var->status == implied_pos && l[i]->index > 0))
+			{
+				clause_subsumed = true;
+				break;
+			}
+		}
+		if (!clause_subsumed)
+			return false;
+		cnf_ptr = cnf_ptr->next;
+	}
+	return true;
+}
+
 
 /******************************************************************************
 * end
