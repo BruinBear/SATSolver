@@ -368,6 +368,8 @@ void sat_unmark_clause(Clause* clause);
 void get_ticket_number(Var* v, SatState* sat_state);
 void unget_ticket_number(Var* v, SatState* sat_state);
 
+void set_watched_literal(Lit* new_watched, Clause* c, SatState* sat_state, unsigned int watch);
+
 Clause* get_asserting_clause(SatState* sat_state);
 BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit);
 void unmark_a_literal(SatState* sat_state, Lit* lit);
