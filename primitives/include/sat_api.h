@@ -75,6 +75,7 @@ typedef struct sat_state_t SatState;
 typedef struct ClauseNode ClauseNode;
 typedef struct LitNode LitNode;
 typedef struct ClausePtrVector ClausePtrVector;
+typedef struct LitPtrVector LitPtrVector;
 
 
 /******************************************************************************
@@ -117,6 +118,14 @@ struct ClausePtrVector
 
 };
 
+
+struct LitPtrVector
+{
+	Lit** lits;
+	size_t limit; // Total size of the vector
+	size_t current; //Number of vectors in it at present
+
+};
 
 struct var {
 
@@ -364,6 +373,9 @@ void sat_unmark_clause(Clause* clause);
 /**  Extra helping functions  **/
 /*******************************/
 
+// (If say sat) check that the assignment is actually satisfying
+BOOLEAN assignment_is_sat(SatState* sat_state);
+
 // Add toBeAdded in front of head
 void get_ticket_number(Var* v, SatState* sat_state);
 void unget_ticket_number(Var* v, SatState* sat_state);
@@ -375,7 +387,9 @@ Lit* flip_lit(Lit* lit);
 void initialize_Lit(Lit* l);
 void initialize_LitNode(LitNode* l);
 void add(ClausePtrVector* cv, Clause* c);
+void add_LitPtrVector(LitPtrVector* lv, Lit* l);
 void initialize_ClausePtrVector(ClausePtrVector* c);
+void initialize_LitPtrVector(LitPtrVector* l);
 void initialize_Var(Var* v);
 void initialize_Clause(Clause * c);
 void initialize_ClauseNode(ClauseNode* c);
