@@ -439,7 +439,11 @@ SatState* sat_state_new(const char* cnf_fname)
 
 		}
 		if (i == 0)
+		{
+			free(clause);
 			continue;
+		}
+		
 		clause->num_lits = lpv.current;
 		//printf("%d ", clause->num_lits);
 		clause->literals = lpv.lits;
