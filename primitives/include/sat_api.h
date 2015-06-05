@@ -86,18 +86,18 @@ typedef struct ClausePtrVector ClausePtrVector;
 ******************************************************************************/
 
 struct literal {
-  c2dLiteral index;
-  ClauseNode* clauses;
-  ClauseNode* clauses_tail;
-  Var* var;
-  Clause* reason; // the reason why literal was implied
-  // NULL if literal is free or decided
+	c2dLiteral index;
+	ClauseNode* clauses;
+	ClauseNode* clauses_tail;
+	Var* var;
+	Clause* reason; // the reason why literal was implied
+	// NULL if literal is free or decided
 
 };
 
 struct LitNode {
-  LitNode* next;
-  Lit* lit;
+	LitNode* next;
+	Lit* lit;
 };
 
 
@@ -111,33 +111,35 @@ struct LitNode {
 
 struct ClausePtrVector
 {
-  Clause** clause;
-  size_t limit; // Total size of the vector
-  size_t current; //Number of vectors in it at present
-  
+	Clause** clause;
+	size_t limit; // Total size of the vector
+	size_t current; //Number of vectors in it at present
+
 };
 
 
 struct var {
 
-  c2dSize index;
+	c2dSize index;
 
-  c2dSize level;
+	c2dSize level;
 
-  Lit* pos_lit;
-  Lit* neg_lit;
-  BOOLEAN mark; //THIS FIELD MUST STAY AS IS
+	c2dSize ticket; // 1 = first var that was implied/decided, 2 = second var that was implied/decided, ...etc
 
-  litstat status; // free, implied_pos or implied_neg (by decision/unit resolution), 
+	Lit* pos_lit;
+	Lit* neg_lit;
+	BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
-  // TODO:
-  // number of clauses which contains this var in original CNF
-  // either literal of var counts, so take absolute value
-  c2dSize num_clause_has;
-  ClausePtrVector original_cnf_array;
+	litstat status; // free, implied_pos or implied_neg (by decision/unit resolution), 
 
-  // Maybe we need this?
-  SatState* state;
+	// TODO:
+	// number of clauses which contains this var in original CNF
+	// either literal of var counts, so take absolute value
+	c2dSize num_clause_has;
+	ClausePtrVector original_cnf_array;
+
+	// Maybe we need this?
+	SatState* state;
 
 
 };
@@ -153,25 +155,25 @@ struct var {
 ******************************************************************************/
 
 struct clause {
-  c2dSize index;
-  Lit** literals;
-  c2dSize num_lits;
-  BOOLEAN mark; //THIS FIELD MUST STAY AS IS
+	c2dSize index;
+	Lit** literals;
+	c2dSize num_lits;
+	BOOLEAN mark; //THIS FIELD MUST STAY AS IS
 
-  // the number of fixed literals that make this clause subsumed
-  // 0 when not subsumed.
-  unsigned long subsuming_literal_count;
-  unsigned long free_literal_count;
+	// the number of fixed literals that make this clause subsumed
+	// 0 when not subsumed.
+	unsigned long subsuming_literal_count;
+	unsigned long free_literal_count;
 
-  Lit* watch1;
-  Lit* watch2;
+	Lit* watch1;
+	Lit* watch2;
 };
 
 
 
 struct ClauseNode {
-  ClauseNode* next;
-  Clause* clause;
+	ClauseNode* next;
+	Clause* clause;
 };
 
 
@@ -183,21 +185,22 @@ struct ClauseNode {
 ******************************************************************************/
 
 struct sat_state_t {
-  Var* vars;
-  c2dSize num_vars;
+	Var* vars;
+	c2dSize num_vars;
 
-  ClauseNode* cnf_head;
-  ClauseNode* cnf_tail;
-  c2dSize num_orig_clauses;
-  c2dSize num_asserted_clauses;
+	ClauseNode* cnf_head;
+	ClauseNode* cnf_tail;
+	c2dSize num_orig_clauses;
+	c2dSize num_asserted_clauses;
 
-  c2dSize assertion_level;
+	c2dSize assertion_level;
+	c2dSize ticket_number;
 
-  LitNode* decided_literals; // stack. The head literal is at
-  // the highest decision level
-  Clause* conflict_reason;
-  LitNode* implied_literals; // stack.
-  callstat call_stat;
+	LitNode* decided_literals; // stack. The head literal is at
+	// the highest decision level
+	Clause* conflict_reason;
+	LitNode* implied_literals; // stack.
+	callstat call_stat;
 };
 
 
@@ -362,7 +365,11 @@ void sat_unmark_clause(Clause* clause);
 /*******************************/
 
 // Add toBeAdded in front of head
+void get_ticket_number(Var* v, SatState* sat_state);
+void unget_ticket_number(Var* v, SatState* sat_state);
+
 Clause* get_asserting_clause(SatState* sat_state);
+BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit);
 void unmark_a_literal(SatState* sat_state, Lit* lit);
 Lit* flip_lit(Lit* lit);
 void initialize_Lit(Lit* l);
