@@ -22,27 +22,12 @@ Lit* get_free_literal(SatState* sat_state) {
 //otherwise, a clause must be learned and it is returned
 Clause* sat_aux(SatState* sat_state) {
   Lit* lit = get_free_literal(sat_state);
-  if(lit != NULL)
-    printf("\nget free literal\n");
-  else
-    printf("\nno free literal\n");
   
   if(lit==NULL) return NULL; //all literals are implied
 
-  // printf("returning null\n");
 
   Clause* learned = sat_decide_literal(lit,sat_state);  
   if(learned==NULL) learned = sat_aux(sat_state);
-
-  printf("**********print before undo\n");
-print_sat_state_clauses(sat_state);
-  sat_undo_decide_literal(sat_state);
-print_sat_state_clauses(sat_state);
- 
-  printf("**********print after undo\n");
-
-
-    printf("\nknock knock\n");
 
   if(learned!=NULL) { //there is a conflict
     if(sat_at_assertion_level(learned,sat_state)) {
@@ -74,20 +59,12 @@ int main(int argc, char* argv[]) {
 	
   //construct a sat state and then check satisfiability
   SatState* sat_state = sat_state_new(cnf_fname);
-  //testing
-  // if(sat_unit_resolution(sat_state)) {
-  //   printf("#####\nJINGYU: SAT\n");
-  // }
-
-  // if((sat_aux(sat_state)==NULL? 1: 0)) {
-  //   printf("#####\nJINGYU: SATTT\n");
-  // }
   if(sat(sat_state)) printf("SAT\n");
   else printf("UNSAT\n");
   
-  print_sat_state_clauses(sat_state);
+  // print_sat_state_clauses(sat_state);
 
-  // sat_state_free(sat_state);
+  sat_state_free(sat_state);
 
   return 0;
 }
