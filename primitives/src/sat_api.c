@@ -387,6 +387,12 @@ SatState* sat_state_new(const char* cnf_fname)
 				num_lits++;
 		}
 
+		if (num_lits == 0)
+		{
+			free(clause);
+			continue;
+		}
+
 		// Walk through it again to point to the literals
 		clause->num_lits = num_lits;
 		clause->literals = (Lit **)malloc(num_lits*sizeof(Lit*));
