@@ -881,6 +881,16 @@ void unmark_a_literal(SatState* sat_state, Lit* lit) {
 	
 }
 
+c2dSize get_last_level(Clause* reason) {
+  c2dSize last_level = 0;
+  for (unsigned long i = 0; i < reason->num_lits; i++) {
+    if (reason->literals[i]->var->level >  last_level) {
+      last_level = reason->literals[i]->var->level;
+    }
+  }
+  return last_level;
+}
+
 //applies unit resolution to the cnf of sat state
 //returns 1 if unit resolution succeeds, 0 if it finds a contradiction
 BOOLEAN sat_unit_resolution(SatState* sat_state) {
@@ -1218,6 +1228,7 @@ void initialize_Var(Var* v) {
 	v->num_clause_has = 0;
 	v->state = NULL;
 	v->level = 1;
+  v->mark = 0;
 	initialize_ClausePtrVector(&v->original_cnf_array);
 }
 
@@ -1228,6 +1239,7 @@ void initialize_Clause(Clause * c) {
 	// c->free_literal_count = 0;
 	c->watch1 = NULL;
 	c->watch2 = NULL;
+  c->mark = 0;
 }
 
 void initialize_ClauseNode(ClauseNode* c) {
@@ -1287,16 +1299,6 @@ BOOLEAN is_lit_duplicate(LitNode* head, Lit* lit) {
 	return false;
 }
 
-
-unsigned long get_last_level(Clause* reason) {
-	unsigned long last_level = 0;
-	for (unsigned long i = 0; i < reason->num_lits; i++) {
-		if (reason->literals[i]->var->level >  last_level) {
-			last_level = reason->literals[i]->var->level;
-		}
-	}
-	return last_level;
-}
 
 Clause* make_clause_from_lit(LitNode* head) {
 	Clause* clause = (Clause *)malloc(sizeof(Clause));
