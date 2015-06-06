@@ -164,7 +164,7 @@ void sat_undo_decide_literal(SatState* sat_state) {
 	unmark_a_literal(sat_state, last_decision->lit);
 	last_decision->lit->var->status = free_var;
 	last_decision->lit->var->level = 1;
-
+	
 	// delete node from list
 	sat_state->decided_literals = sat_state->decided_literals->next;
 	unget_ticket_number(last_decision->lit->var, sat_state);
@@ -259,7 +259,43 @@ c2dSize sat_learned_clause_count(const SatState* sat_state) {
 	return (sat_state->cnf_tail->clause->index) - (sat_state->num_orig_clauses);
 }
 
+// True if clause2's literals are also clause1's literals
+BOOLEAN clause1_includes_clause2(Clause* clause1, Clause* clause2)
+{
+	Lit** lit1 = clause1->literals;
+	Lit** lit2 = clause2->literals;
 
+	for (unsigned int i = 0; i < clause2->num_lits; i++)
+	{
+		BOOLEAN has_lit = false;
+		for (unsigned int j = 0; j < clause1->num_lits; j++)
+		{
+			if (lit1[j] == lit2[i])
+			{
+				has_lit = true;
+				break;
+			}
+		}
+		if (has_lit == false)
+			return false;
+	}
+	return true;
+}
+
+Clause* get_clause_duplicate(Clause* clause, SatState* sat_state)
+{
+	ClauseNode* ptr = sat_state->cnf_head;
+	while (ptr != NULL)
+	{
+		// If our clause is the same as something in the cnf
+		// It isn't useful!
+		if (clause1_includes_clause2(clause, ptr->clause) 
+			&& clause1_includes_clause2(ptr->clause, clause))
+			return ptr->clause;
+		ptr = ptr->next;
+	}
+	return NULL;
+}
 
 
 //adds clause to the set of learned clauses, and runs unit resolution
@@ -270,7 +306,45 @@ c2dSize sat_learned_clause_count(const SatState* sat_state) {
 Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
 	// Assume clause isn't empty
 	assert(clause != NULL);
-	//printf("Assert");
+	
+	//print_clause(clause);
+	//printf("\n");
+
+	//Clause* dup = get_clause_duplicate(clause, sat_state);
+	//// Do a check that we're not adding a clause that is already in the cnf
+	//if (dup != NULL)
+	//{
+	//	//print_sat_state_clauses(sat_state);
+	//	printf("Duplicate clause\n");
+	//	print_clause(clause);
+	//	printf("\n");
+
+	//	printf("Conflicting clause\n");
+	//	print_clause(sat_state->conflict_reason);
+	//	
+	//	free(clause->literals);
+	//	free(clause);
+	//	getc(stdin);
+	//	exit(1);
+	//	
+	//	// Set the contradicting clause in sat_state to NULL
+	//	sat_state->conflict_reason = NULL;
+
+	//	// Do unit resolution
+	//	// If unit resolution succeeded, return NULL
+	//	// else return asserting clause
+	//	sat_state->call_stat = learn_call;
+	//	if (sat_unit_resolution(sat_state))
+	//		return NULL;
+	//	else
+	//		return get_asserting_clause(sat_state);
+
+	//}
+	//else
+	//{
+	//	printf("Not dup\n");
+	//}
+
 	// Add assert clause to lit related clauses
 	for (unsigned int i = 0; i < clause->num_lits; i++) {
 		ClauseNode* new_node = (ClauseNode*)malloc(sizeof(ClauseNode));
@@ -280,7 +354,12 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
 		Lit* l = clause->literals[i];
 		new_node->next = l->clauses;
 		l->clauses = new_node;
+		if (l->clauses_tail == NULL)
+		{
+			l->clauses_tail = new_node;
+		}
 	}
+	
 
 	// Set the clause index
 	if (sat_state->cnf_tail != NULL)
@@ -341,6 +420,8 @@ SatState* sat_state_new(const char* cnf_fname)
 	size_t line_size = 50;
 
 	char* line = (char *)malloc(line_size* sizeof(char));
+
+	unsigned int num_counted_clauses = 0;
 
 	while (getline(&line, &line_size, file) != -1)
 	{
@@ -443,7 +524,8 @@ SatState* sat_state_new(const char* cnf_fname)
 			free(clause);
 			continue;
 		}
-		
+			
+		num_counted_clauses++;
 		clause->num_lits = lpv.current;
 		//printf("%d ", clause->num_lits);
 		clause->literals = lpv.lits;
@@ -509,6 +591,8 @@ SatState* sat_state_new(const char* cnf_fname)
 
 	}
 	//printf("DID I FINISH MAKING SATSTATE");
+	//printf("Num counted clauses is... %d\n", num_counted_clauses);
+	//print_sat_state_clauses(state);
 	return state;
 }
 
@@ -629,11 +713,11 @@ Lit* get_free_literal_from_clause(Clause* c) {
 
 LitNode* append(LitNode* head, LitNode* n) {
 	LitNode* tmp = head;
-	if (head != NULL) {
-		while (head->next != NULL)
-			head = head->next;
-		head->next = n;
-		return tmp;
+	if (tmp != NULL) {
+		while (tmp->next != NULL)
+			tmp = tmp->next;
+		tmp->next = n;
+		return head;
 	}
 	else { // just one
 		return n;
@@ -652,6 +736,8 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
 	else {
 		lit->var->status = implied_neg;
 	}
+
+	//BOOKMARK
 	ClauseNode* resolved_head = flip_lit(lit)->clauses;
 	while (resolved_head != NULL) {
 		if (count_subsumed_lit(resolved_head->clause) == 0 &&
@@ -701,6 +787,11 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 		exit(1);
 	}
 	if (sat_state->call_stat == first_call) {
+		if (sat_state->conflict_reason != NULL)
+		{
+			return false;
+		}
+
 		LitNode* tmp = sat_state->implied_literals;
 		while (tmp != NULL) {
 			if (!mark_a_literal(sat_state, tmp->lit)) {
@@ -708,6 +799,7 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 			}
 			tmp = tmp->next;
 		}
+		//print_sat_state_clauses(sat_state);
 	}
 	else if (sat_state->call_stat == decide_call) { // mark on a decision
 		LitNode* tmp = sat_state->implied_literals;
@@ -737,9 +829,14 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 		return 1;
 	}
 	else if (sat_state->call_stat == learn_call) {
+		//printf("Learned call\n");
 
 		Clause* c = sat_state->cnf_tail->clause;
+		//print_clause(c);
+		//printf("Num free: %d, Num subsume: %d\n", count_free_lit(c), count_subsumed_lit(c));
+
 		if (count_subsumed_lit(c) != 0 && count_free_lit(c) == 0){ // conflict
+			printf("Learned clause is conflicting!!!!\n");
 			sat_state->conflict_reason = c;
 			return 0;
 		}
@@ -750,6 +847,7 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 				while (tmp->next != NULL)
 					tmp = tmp->next;
 			}
+			//printf("Learned clause implies literal...%d\n", get_free_literal_from_clause(c)->index);
 			if (!mark_a_literal(sat_state, get_free_literal_from_clause(c))){
 				return 0;
 			}
@@ -807,20 +905,21 @@ BOOLEAN sat_at_assertion_level(const Clause* clause, const SatState* sat_state) 
 	c2dSize assertion_level = 1;
 	c2dSize highest_level = 1;
 
-	// Get highest level
+	// get highest level
 	for (unsigned int i = 0; i < clause->num_lits; i++)
 	{
 		if ((clause->literals[i]->var->level)>highest_level)
 			highest_level = (clause->literals[i]->var->level);
 	}
 
-	// Get assertion_level
+	// get assertion_level
 	for (unsigned int i = 0; i < clause->num_lits; i++)
 	{
 		if (((clause->literals[i]->var->level)>assertion_level)
 			&& ((clause->literals[i]->var->level) != highest_level))
 			assertion_level = (clause->literals[i]->var->level);
 	}
+	//return decision_level == sat_state->assertion_level;
 
 	return decision_level == assertion_level;
 }
@@ -897,7 +996,7 @@ void add(ClausePtrVector* cv, Clause* c)
 	}
 	else if (cv->current == cv->limit)
 	{
-		cv->limit *= 2;
+		cv->limit += 2;
 		cv->clause = (Clause**)realloc(cv->clause, cv->limit*sizeof(Clause*));
 		if (cv->clause == NULL)
 		{
@@ -918,7 +1017,7 @@ void add_LitPtrVector(LitPtrVector* lv, Lit* l)
 	}
 	else if (lv->current == lv->limit)
 	{
-		lv->limit *= 2;
+		lv->limit += 2;
 		lv->lits = (Lit**)realloc(lv->lits, lv->limit*sizeof(Lit*));
 		if (lv->lits == NULL)
 		{
@@ -1174,8 +1273,37 @@ Clause* get_asserting_clause(SatState* sat_state) {
 		tmp = tmp->next;
 	}
 	q_head->next = l_head;
-	Clause* c = make_clause_from_lit(q_head);
-	return c;
+	Clause* clause = make_clause_from_lit(q_head);
+
+	//// Get assertion level from this clause
+
+	//if (clause->num_lits == 1)
+	//{
+	//	sat_state->assertion_level = 1;
+	//	return clause;
+	//}
+
+	//c2dSize assertion_level = 1;
+	//c2dSize highest_level = 1;
+
+	//// Get highest level
+	//for (unsigned int i = 0; i < clause->num_lits; i++)
+	//{
+	//	if ((clause->literals[i]->var->level)>highest_level)
+	//		highest_level = (clause->literals[i]->var->level);
+	//}
+
+	//// Get assertion_level
+	//for (unsigned int i = 0; i < clause->num_lits; i++)
+	//{
+	//	if (((clause->literals[i]->var->level)>assertion_level)
+	//		&& ((clause->literals[i]->var->level) != highest_level))
+	//		assertion_level = (clause->literals[i]->var->level);
+	//}
+
+	//sat_state->assertion_level = assertion_level;
+
+	return clause;
 }
 
 
@@ -1211,7 +1339,7 @@ unsigned int count_subsumed_lit(Clause* c) {
 
 void print_clause(Clause* c) {
 	for (unsigned int i = 0; i < c->num_lits; i++) {
-		printf(" %d<%d>", c->literals[i]->index, c->literals[i]->var->level);
+		printf(" %d<%d>[%d]", c->literals[i]->index, c->literals[i]->var->level, c->literals[i]->var->ticket);
 		if (c->literals[i]->var->status == free_var)
 			printf("(free) ");
 		else if (c->literals[i]->var->status == implied_pos)
