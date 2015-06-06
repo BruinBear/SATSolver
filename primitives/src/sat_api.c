@@ -743,7 +743,7 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 			sat_state->conflict_reason = c;
 			return 0;
 		}
-		else if (count_subsumed_lit(c) && count_free_lit(c) == 1) { // new imply
+		else if (count_subsumed_lit(c) == 0 && count_free_lit(c) == 1) { // new imply
 			LitNode* tmp = sat_state->implied_literals;
 			// tmp is now the tail;
 			if (tmp != NULL) {
