@@ -22,12 +22,11 @@ Lit* get_free_literal(SatState* sat_state) {
 //otherwise, a clause must be learned and it is returned
 Clause* sat_aux(SatState* sat_state) {
   Lit* lit = get_free_literal(sat_state);
-  
   if(lit==NULL) return NULL; //all literals are implied
 
-
-  Clause* learned = sat_decide_literal(lit,sat_state);  
+  Clause* learned = sat_decide_literal(lit,sat_state);
   if(learned==NULL) learned = sat_aux(sat_state);
+  sat_undo_decide_literal(sat_state);
 
   if(learned!=NULL) { //there is a conflict
     if(sat_at_assertion_level(learned,sat_state)) {
@@ -47,7 +46,7 @@ BOOLEAN sat(SatState* sat_state) {
   return ret;
 }
 
-int main(int argc, char* argv[]) {	
+int main(int argc, char* argv[]) {  
   char USAGE_MSG[] = "Usage: ./sat -c <cnf_file>\n";
   char* cnf_fname  = NULL;
 
@@ -56,14 +55,11 @@ int main(int argc, char* argv[]) {
     printf("%s",USAGE_MSG);
     exit(1);
   }
-	
+  
   //construct a sat state and then check satisfiability
   SatState* sat_state = sat_state_new(cnf_fname);
   if(sat(sat_state)) printf("SAT\n");
   else printf("UNSAT\n");
-  
-  // print_sat_state_clauses(sat_state);
-
   sat_state_free(sat_state);
 
   return 0;
