@@ -11,6 +11,28 @@
 * --You should carefully read the descriptions and must follow each requirement
 ******************************************************************************/
 
+void printstuff(SatState* sat_state)
+{
+	if (sat_state->vars[19].status == implied_neg)
+	{
+		//print_sat_state_clauses(sat_state);
+		printf("- ");
+		
+		return;
+		//getc(stdin);
+		//exit(1);
+	}
+	if (sat_state->vars[19].status == implied_pos)
+	{
+		//print_sat_state_clauses(sat_state);
+		printf("+ ");
+		return;
+		//getc(stdin);
+		//exit(1);
+	}
+}
+
+
 /******************************************************************************
 * Variables
 ******************************************************************************/
@@ -113,6 +135,7 @@ BOOLEAN sat_implied_literal(const Lit* lit) {
 //if the current decision level is L in the beginning of the call, it should be updated 
 //to L+1 so that the decision level of lit and all other literals implied by unit resolution is L+1
 Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
+	//printstuff(sat_state);
 	// Set the level of lit
 	lit->var->level = (sat_state->decided_literals == NULL) ? 2 : (sat_state->decided_literals->lit->var->level + 1);
 
@@ -127,6 +150,11 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
 	// Add lit to head of decision literals list in sat_state
 	LitNode* lnode = (LitNode*)malloc(sizeof(LitNode));
 	initialize_LitNode(lnode);
+	if (lit->var->level == 1)
+	{
+		//printf("Called get_ticket_number with %d(Decided) at level 1\n", lit->index);
+		//getc(stdin);
+	}
 	get_ticket_number(lit->var, sat_state);
 
 	lnode->lit = lit;
@@ -143,7 +171,25 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
 		return NULL;
 	}
 	else {
+		// BOOKMARK
+		//printf("Decision caused conflict: %d\n", lit->index);
+		//LitNode* lnode = sat_state->decided_literals;
+		//printf("Decision literals...\n");
+		//while (lnode != NULL)
+		//{
+		//	printf("%d<%d> ", lnode->lit->index, lnode->lit->var->level);
+		//	lnode = lnode->next;
+		//}
+		//printf("\nImplied literals...\n");
+		//lnode = sat_state->implied_literals;
+		//while (lnode != NULL)
+		//{
+		//	printf("%d<%d> ", lnode->lit->index, lnode->lit->var->level);
+		//	lnode = lnode->next;
+		//}
 		Clause* c = get_asserting_clause(sat_state);
+		//printf("Learned clause...\n");
+		//print_clause(c);
 		return c;
 	}
 }
@@ -153,12 +199,14 @@ Clause* sat_decide_literal(Lit* lit, SatState* sat_state) {
 //if the current decision level is L in the beginning of the call, it should be updated 
 //to L-1 before the call ends
 void sat_undo_decide_literal(SatState* sat_state) {
+	//printstuff(sat_state);
 	//assert(sat_state != NULL);
 	if (sat_state->decided_literals == NULL)
 		return;
 
 	LitNode* last_decision = sat_state->decided_literals;
 	c2dSize last_level = last_decision->lit->var->level;
+
 
 	// Unmark the last decision, set var status to free, and set level of literal to 1
 	unmark_a_literal(sat_state, last_decision->lit);
@@ -180,6 +228,14 @@ void sat_undo_decide_literal(SatState* sat_state) {
 				sat_state->implied_literals = NULL;
 				LitNode* to_free = lnode;
 				while (to_free != NULL) {
+					if (to_free->lit->var->level != last_level)
+					{
+						//print_sat_state_clauses(sat_state);
+						printf("Freed a lit not at last level!!!!");
+						getc(stdin);
+						exit(1);
+
+					}
 					unmark_a_literal(sat_state, to_free->lit);
 					to_free->lit->var->status = free_var;
 					to_free->lit->var->level = 1;
@@ -193,6 +249,14 @@ void sat_undo_decide_literal(SatState* sat_state) {
 			else {
 				LitNode* to_free = lnode;
 				while (to_free != NULL) {
+					if (to_free->lit->var->level != last_level)
+					{
+						//print_sat_state_clauses(sat_state);
+						printf("Freed a lit not at last level!!!!");
+						getc(stdin);
+						exit(1);
+
+					}
 					unmark_a_literal(sat_state, to_free->lit);
 					to_free->lit->var->status = free_var;
 					to_free->lit->var->level = 1;
@@ -382,7 +446,32 @@ Clause* sat_assert_clause(Clause* clause, SatState* sat_state) {
 	if (sat_unit_resolution(sat_state))
 		return NULL;
 	else
+	{
+		//BOOKMARK
+		//printf("\nAdding learned clause caused conflict\n");
+
+		//printf("Learned clause:\n");
+		//print_clause(clause);
+		//LitNode* lnode = sat_state->decided_literals;
+		//printf("Decision literals...\n");
+		//while (lnode != NULL)
+		//{
+		//	printf("%d<%d> ", lnode->lit->index, lnode->lit->var->level);
+		//	lnode = lnode->next;
+		//}
+		//printf("\nImplied literals...\n");
+		//lnode = sat_state->implied_literals;
+		//while (lnode != NULL)
+		//{
+		//	printf("%d<%d> ", lnode->lit->index, lnode->lit->var->level);
+		//	lnode = lnode->next;
+		//}
+
+
+
 		return get_asserting_clause(sat_state);
+	}
+		
 
 
 }
@@ -590,6 +679,7 @@ SatState* sat_state_new(const char* cnf_fname)
 		//printf("DID I GET HERE?");
 
 	}
+	//printstuff(state);
 	//printf("DID I FINISH MAKING SATSTATE");
 	//printf("Num counted clauses is... %d\n", num_counted_clauses);
 	//print_sat_state_clauses(state);
@@ -729,15 +819,21 @@ LitNode* append(LitNode* head, LitNode* n) {
 // else return false and assign a clause to conflict reason
 BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
 	// return true;
-
+	
+	//printstuff(sat_state);
 	if (lit->index > 0) {
 		lit->var->status = implied_pos;
 	}
 	else {
 		lit->var->status = implied_neg;
 	}
+	if (lit->var->ticket == 0)
+	{
+		print_sat_state_clauses(sat_state);
+		printf("\nLit %d got implied in mark_a_literal but didn't get ticket!\n", lit->index);
+		getc(stdin);
+	}
 
-	//BOOKMARK
 	ClauseNode* resolved_head = flip_lit(lit)->clauses;
 	while (resolved_head != NULL) {
 		if (count_subsumed_lit(resolved_head->clause) == 0 &&
@@ -756,6 +852,13 @@ BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit) {
 			// add the newly implied literal
 			LitNode* lnode = (LitNode*)malloc(sizeof(LitNode));
 			initialize_LitNode(lnode);
+			if (new_implied->var->level == 1)
+			{
+				//print_sat_state_clauses(sat_state);
+				//printf("\n\nReason for this is: %d", sat_state->call_stat);
+				//printf("\n\nCalled get_ticket_number with %d(Implied by %d<%d>[%d](%d)) at level 1\n", new_implied->index, lit->index, lit->var->level, lit->var->ticket, lit->var->status);
+				//getc(stdin);
+			}
 			get_ticket_number(new_implied->var, sat_state);
 			lnode->lit = new_implied;
 			lnode->lit->var->status = (lnode->lit->index>0) ? implied_pos : implied_neg;
@@ -775,11 +878,15 @@ void unmark_a_literal(SatState* sat_state, Lit* lit) {
 	}
 	lit->reason = NULL;
 	lit->var->status = free_var;
+	
 }
 
 //applies unit resolution to the cnf of sat state
 //returns 1 if unit resolution succeeds, 0 if it finds a contradiction
 BOOLEAN sat_unit_resolution(SatState* sat_state) {
+	// Test: Check the status of variable 20
+	//printstuff(sat_state);
+
 	if (sat_state == NULL)
 	{
 		//printf("SatState null at sat_unit_res!");
@@ -794,6 +901,11 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 
 		LitNode* tmp = sat_state->implied_literals;
 		while (tmp != NULL) {
+			if (tmp->lit->var->ticket == 0)
+			{
+				printf("Marking a non-ticketed literal %d in first_call unit res\n", tmp->lit->index);
+				getc(stdin);
+			}
 			if (!mark_a_literal(sat_state, tmp->lit)) {
 				return 0;
 			}
@@ -810,6 +922,11 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 		}
 
 		// bug
+		if (sat_state->decided_literals->lit->var->ticket == 0)
+		{
+			printf("Marking a non-ticketed literal %d in decide_call unit res\n", sat_state->decided_literals->lit->index);
+			getc(stdin);
+		}
 		if (!mark_a_literal(sat_state, sat_state->decided_literals->lit)) {
 			return false;
 		}
@@ -821,6 +938,11 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 			tmp = tmp->next;
 		}
 		while (tmp != NULL) {
+			if (tmp->lit->var->ticket == 0)
+			{
+				printf("Marking a non-ticketed literal %d in decide_call unit res\n", tmp->lit->index);
+				getc(stdin);
+			}
 			if (!mark_a_literal(sat_state, tmp->lit)) {
 				return 0;
 			}
@@ -848,7 +970,25 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 					tmp = tmp->next;
 			}
 			//printf("Learned clause implies literal...%d\n", get_free_literal_from_clause(c)->index);
-			if (!mark_a_literal(sat_state, get_free_literal_from_clause(c))){
+
+			Lit* going_to_mark = get_free_literal_from_clause(c);
+			going_to_mark->var->level = get_last_level(c);
+			going_to_mark->reason = c;
+			
+			// Get ticket number and add to implied literal queue in sat_state
+			get_ticket_number(going_to_mark->var, sat_state);
+			LitNode* going_to_mark_node = (LitNode*)malloc(sizeof(LitNode));
+			initialize_LitNode(going_to_mark_node);
+			going_to_mark_node->lit = going_to_mark;
+			sat_state->implied_literals = append(sat_state->implied_literals, going_to_mark_node);
+			
+			if (going_to_mark->var->ticket == 0)
+			{
+				printf("Marking a non-ticketed literal %d in learned_call unit res\n", going_to_mark->index);
+				getc(stdin);
+			}
+			
+			if (!mark_a_literal(sat_state, going_to_mark)){
 				return 0;
 			}
 			if (tmp == NULL) {
@@ -858,6 +998,11 @@ BOOLEAN sat_unit_resolution(SatState* sat_state) {
 				tmp = tmp->next;
 			}
 			while (tmp != NULL) {
+				if (tmp->lit->var->ticket == 0)
+				{
+					printf("Marking a non-ticketed literal %d in first_call unit res\n", tmp->lit->index);
+					getc(stdin);
+				}
 				if (!mark_a_literal(sat_state, tmp->lit)) {
 					return 0;
 				}
@@ -899,29 +1044,32 @@ BOOLEAN sat_at_assertion_level(const Clause* clause, const SatState* sat_state) 
 	else
 		decision_level = sat_state->decided_literals->lit->var->level;
 
-	if (clause->num_lits == 1)
-		return (1 == decision_level);
+	//if (clause->num_lits == 1)
+	//	return (1 == decision_level);
 
-	c2dSize assertion_level = 1;
-	c2dSize highest_level = 1;
+	//c2dSize assertion_level = 1;
+	//c2dSize highest_level = 1;
 
-	// get highest level
-	for (unsigned int i = 0; i < clause->num_lits; i++)
-	{
-		if ((clause->literals[i]->var->level)>highest_level)
-			highest_level = (clause->literals[i]->var->level);
-	}
+	//// get highest level
+	//for (unsigned int i = 0; i < clause->num_lits; i++)
+	//{
+	//	if ((clause->literals[i]->var->level)>highest_level)
+	//		highest_level = (clause->literals[i]->var->level);
+	//}
 
-	// get assertion_level
-	for (unsigned int i = 0; i < clause->num_lits; i++)
-	{
-		if (((clause->literals[i]->var->level)>assertion_level)
-			&& ((clause->literals[i]->var->level) != highest_level))
-			assertion_level = (clause->literals[i]->var->level);
-	}
-	//return decision_level == sat_state->assertion_level;
+	//// get assertion_level
+	//for (unsigned int i = 0; i < clause->num_lits; i++)
+	//{
+	//	if (((clause->literals[i]->var->level)>assertion_level)
+	//		&& ((clause->literals[i]->var->level) != highest_level))
+	//		assertion_level = (clause->literals[i]->var->level);
+	//}
+	//return decision_level == assertion_level;	
+	//
+	
+	return decision_level == sat_state->assertion_level;
+	// BOOKMARK
 
-	return decision_level == assertion_level;
 }
 
 /******************************************************************************
@@ -968,14 +1116,30 @@ void sat_unmark_clause(Clause* clause) {
 
 void get_ticket_number(Var* v, SatState* sat_state)
 {
+	/*if (v->level == 1)
+	{
+		v->ticket = sat_state->ticket_number;
+		print_sat_state_clauses(sat_state);
+		printf(" %d<%d>[%d] ", v->index, v->level, v->ticket);
+		getc(stdin);
+
+	}*/
+
 	v->ticket = sat_state->ticket_number;
+	if (sat_state->ticket_number == 0)
+	{
+		printf("\nTicket num = 0!!!!!!");
+		getc(stdin);
+	}
+	//printf(" %d<%d>[%d] ", v->index, v->level, v->ticket);
 	sat_state->ticket_number += 1;
 }
 
 void unget_ticket_number(Var* v, SatState* sat_state)
 {
 	v->ticket = 0;
-	sat_state->ticket_number -= 1;
+	v->status = free_var;
+	//sat_state->ticket_number -= 1;
 }
 
 void initialize_Lit(Lit* l) {
@@ -1082,6 +1246,7 @@ void initialize_SatState(SatState* s) {
 	s->decided_literals = NULL;
 	s->conflict_reason = NULL;
 	s->implied_literals = NULL;
+	s->implied_literals_tail = NULL;
 	s->call_stat = first_call;
 	s->ticket_number = 1;
 }
@@ -1156,9 +1321,11 @@ Clause* make_clause_from_lit(LitNode* head) {
 
 
 Clause* get_asserting_clause(SatState* sat_state) {
+	//printstuff(sat_state);
 	LitNode* q_head = NULL; // Note this has been used w/o being initilized
 	LitNode* l_head = NULL; // Note this has been used w/o being initilized
 	Clause* conflict_reason = sat_state->conflict_reason;
+	
 	unsigned long last_level = get_last_level(conflict_reason);
 	// initialize from conflict
 	for (unsigned long i = 0; i < conflict_reason->num_lits; i++) {
@@ -1221,6 +1388,16 @@ Clause* get_asserting_clause(SatState* sat_state) {
 		// The decided lit at highest level has higher ticket number than implied
 		// This should not happen!
 		if (highest_ticket_lit->reason == NULL) {
+			//print_sat_state_clauses(sat_state);
+			printf("Highest ticket lit has no reason...ticket=%d, level=%d\n", highest_ticket_lit->var->ticket, highest_ticket_lit->var->level);
+			print_clause(conflict_reason);
+			printf("Called because...");
+			if (sat_state->call_stat == learn_call)
+				printf("learned\n");
+			else if (sat_state->call_stat == decide_call)
+				printf("decide\n");
+			else
+				printf("first time\n");
 			assert(false);
 		}
 
@@ -1274,34 +1451,34 @@ Clause* get_asserting_clause(SatState* sat_state) {
 	}
 	q_head->next = l_head;
 	Clause* clause = make_clause_from_lit(q_head);
+//BOOKMARK
+	// Get assertion level from this clause
 
-	//// Get assertion level from this clause
+	if (clause->num_lits == 1)
+	{
+		sat_state->assertion_level = 1;
+		return clause;
+	}
 
-	//if (clause->num_lits == 1)
-	//{
-	//	sat_state->assertion_level = 1;
-	//	return clause;
-	//}
+	c2dSize assertion_level = 1;
+	c2dSize highest_level = 1;
 
-	//c2dSize assertion_level = 1;
-	//c2dSize highest_level = 1;
+	// Get highest level
+	for (unsigned int i = 0; i < clause->num_lits; i++)
+	{
+		if ((clause->literals[i]->var->level)>highest_level)
+			highest_level = (clause->literals[i]->var->level);
+	}
 
-	//// Get highest level
-	//for (unsigned int i = 0; i < clause->num_lits; i++)
-	//{
-	//	if ((clause->literals[i]->var->level)>highest_level)
-	//		highest_level = (clause->literals[i]->var->level);
-	//}
+	// Get assertion_level
+	for (unsigned int i = 0; i < clause->num_lits; i++)
+	{
+		if (((clause->literals[i]->var->level)>assertion_level)
+			&& ((clause->literals[i]->var->level) != highest_level))
+			assertion_level = (clause->literals[i]->var->level);
+	}
 
-	//// Get assertion_level
-	//for (unsigned int i = 0; i < clause->num_lits; i++)
-	//{
-	//	if (((clause->literals[i]->var->level)>assertion_level)
-	//		&& ((clause->literals[i]->var->level) != highest_level))
-	//		assertion_level = (clause->literals[i]->var->level);
-	//}
-
-	//sat_state->assertion_level = assertion_level;
+	sat_state->assertion_level = assertion_level;
 
 	return clause;
 }
