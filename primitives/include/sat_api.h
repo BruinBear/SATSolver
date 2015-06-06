@@ -208,7 +208,8 @@ struct sat_state_t {
 	LitNode* decided_literals; // stack. The head literal is at
 	// the highest decision level
 	Clause* conflict_reason;
-	LitNode* implied_literals; // stack.
+	LitNode* implied_literals; // queue
+	LitNode* implied_literals_tail;
 	callstat call_stat;
 };
 
