@@ -75,6 +75,7 @@ typedef struct sat_state_t SatState;
 typedef struct ClauseNode ClauseNode;
 typedef struct LitNode LitNode;
 typedef struct ClausePtrVector ClausePtrVector;
+typedef struct LitPtrVector LitPtrVector;
 
 
 /******************************************************************************
@@ -89,6 +90,12 @@ struct literal {
 	c2dLiteral index;
 	ClauseNode* clauses;
 	ClauseNode* clauses_tail;
+
+	// Use for watch 2 literal implementation
+	ClauseNode* watched_clauses;
+	ClauseNode* watched_clauses_tail;
+
+
 	Var* var;
 	Clause* reason; // the reason why literal was implied
 	// NULL if literal is free or decided
@@ -117,6 +124,14 @@ struct ClausePtrVector
 
 };
 
+
+struct LitPtrVector
+{
+	Lit** lits;
+	size_t limit; // Total size of the vector
+	size_t current; //Number of vectors in it at present
+
+};
 
 struct var {
 
@@ -199,7 +214,8 @@ struct sat_state_t {
 	LitNode* decided_literals; // stack. The head literal is at
 	// the highest decision level
 	Clause* conflict_reason;
-	LitNode* implied_literals; // stack.
+	LitNode* implied_literals; // queue
+	LitNode* implied_literals_tail;
 	callstat call_stat;
 };
 
@@ -364,11 +380,19 @@ void sat_unmark_clause(Clause* clause);
 /**  Extra helping functions  **/
 /*******************************/
 
+// (If say sat) check that the assignment is actually satisfying
+BOOLEAN assignment_is_sat(SatState* sat_state);
+
 // Add toBeAdded in front of head
 void get_ticket_number(Var* v, SatState* sat_state);
 void unget_ticket_number(Var* v, SatState* sat_state);
 
-void set_watched_literal(Lit* new_watched, Clause* c, SatState* sat_state, unsigned int watch);
+// Watch 2 literal funs
+void move_clause(Lit* from, Lit* to, ClauseNode* the_one_before_to_move);
+void get_initial_watches(SatState* sat_state);
+BOOLEAN mark_a_literal_watch2(SatState* sat_state, Lit* lit);
+void set_learned_clause_watches(Clause* c, SatState* sat_state);
+//end Watch 2 literal funs
 
 Clause* get_asserting_clause(SatState* sat_state);
 BOOLEAN mark_a_literal(SatState* sat_state, Lit* lit);
@@ -377,7 +401,9 @@ Lit* flip_lit(Lit* lit);
 void initialize_Lit(Lit* l);
 void initialize_LitNode(LitNode* l);
 void add(ClausePtrVector* cv, Clause* c);
+void add_LitPtrVector(LitPtrVector* lv, Lit* l);
 void initialize_ClausePtrVector(ClausePtrVector* c);
+void initialize_LitPtrVector(LitPtrVector* l);
 void initialize_Var(Var* v);
 void initialize_Clause(Clause * c);
 void initialize_ClauseNode(ClauseNode* c);
