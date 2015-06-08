@@ -1,0 +1,50 @@
+Test 2bitcomp_5.cnf
+
+Constructing CNF... DONE
+CNF stats: 
+  Vars=125 / Clauses=310
+  CNF Time	0.001s
+Constructing vtree (from primal graph)... DONE
+Vtree stats:
+  Vtree widths: con<=37, c_con=110 v_con=37
+  Vtree Time	0.010s
+Counting... DONE
+  Learned clauses      	558
+Cache stats:
+  hit rate   	94.9%
+  lookups    	161742
+  ent count  	597
+  ent memory 	37.2 KB
+  ht  memory 	152.6 MB
+  clists     	1.0 ave, 1 max
+  keys       	15.7b ave, 19.0b max, 2.0b min
+Count stats:
+  Count Time	0.357s
+  Count 	9840070722846720.000
+Total Time: 0.385s
+
+===============================
+
+Constructing CNF... DONE
+CNF stats: 
+  Vars=125 / Clauses=310
+  CNF Time	0.001s
+Constructing vtree (from primal graph)... DONE
+Vtree stats:
+  Vtree widths: con<=30, c_con=110 v_con=30
+  Vtree Time	0.010s
+Counting... DONE
+  Learned clauses      	398
+Cache stats:
+  hit rate   	97.7%
+  lookups    	112507
+  ent count  	397
+  ent memory 	23.4 KB
+  ht  memory 	152.6 MB
+  clists     	1.0 ave, 1 max
+  keys       	12.4b ave, 14.0b max, 2.0b min
+Count stats:
+  Count Time	2.321s
+  Count 	9840070722846720.000
+Total Time: 2.356s
+
